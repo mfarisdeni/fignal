@@ -1,0 +1,189 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Warm stone palette — calm, premium, fintech */
+    --background: 48 27% 97%; /* #faf9f5 */
+    --foreground: 0 0% 10%; /* #191919 */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 0 0% 12%;
+    --primary-foreground: 48 27% 97%;
+    --secondary: 45 12% 94%;
+    --secondary-foreground: 0 0% 14%;
+    --muted: 45 12% 94%;
+    --muted-foreground: 40 5% 42%;
+    --accent: 45 12% 94%;
+    --accent-foreground: 0 0% 12%;
+    --destructive: 347 77% 40%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 45 9% 89%; /* #e5e4df */
+    --input: 45 9% 89%;
+    --ring: 40 5% 45%;
+    --radius: 0.5rem;
+
+    /* Semantic accents — used sparingly, for state only */
+    --buy: 158 85% 25%;
+    --sell: 347 77% 40%;
+    --active: 158 85% 25%;
+    --info: 224 76% 42%;
+    --upcoming: 28 90% 32%;
+    --conf-aplus: 33 90% 32%;
+    --conf-a: 243 75% 46%;
+    --conf-bplus: 175 84% 24%;
+    --conf-b: 215 14% 40%;
+    --conf-c: 40 5% 46%;
+
+    /* Elevation */
+    --shadow-color: 0 0% 10%;
+  }
+
+  .dark {
+    --background: 60 3% 8%; /* #141413 */
+    --foreground: 48 27% 97%;
+    --card: 60 3% 11%; /* #1c1c1a */
+    --card-foreground: 48 27% 97%;
+    --popover: 60 3% 11%;
+    --popover-foreground: 48 27% 97%;
+    --primary: 48 27% 95%;
+    --primary-foreground: 0 0% 10%;
+    --secondary: 50 4% 16%;
+    --secondary-foreground: 48 27% 95%;
+    --muted: 50 4% 15%;
+    --muted-foreground: 44 6% 62%;
+    --accent: 50 4% 16%;
+    --accent-foreground: 48 27% 95%;
+    --destructive: 351 95% 71%;
+    --destructive-foreground: 0 0% 10%;
+    --border: 45 5% 18%;
+    --input: 45 5% 20%;
+    --ring: 44 6% 62%;
+
+    --buy: 158 64% 55%;
+    --sell: 351 95% 73%;
+    --active: 158 64% 55%;
+    --info: 213 94% 70%;
+    --upcoming: 43 96% 60%;
+    --conf-aplus: 43 96% 60%;
+    --conf-a: 234 89% 76%;
+    --conf-bplus: 172 66% 52%;
+    --conf-b: 215 18% 68%;
+    --conf-c: 44 6% 60%;
+
+    --shadow-color: 0 0% 0%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Inter", -apple-system, "Segoe UI", "PingFang SC",
+      "Microsoft YaHei", sans-serif;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  /* Visible, calm focus state everywhere */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: hsl(var(--foreground) / 0.12);
+  }
+}
+
+@layer utilities {
+  /* Tabular lining figures for all numeric values */
+  .tnum {
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
+
+  .font-mono-num {
+    font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  /* Card entrance — subtle fade + slide, staggered via inline delay */
+  .animate-enter {
+    animation: enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Soft live pulse for ACTIVE status dots */
+  .animate-pulse-dot {
+    animation: pulse-dot 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Thin, unobtrusive scrollbar for horizontally scrollable filter rows */
+  .scroll-thin {
+    scrollbar-width: none;
+  }
+  .scroll-thin::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Soft card elevation that works in both themes */
+  .shadow-card {
+    box-shadow: 0 1px 2px hsl(var(--shadow-color) / 0.04),
+      0 4px 16px -4px hsl(var(--shadow-color) / 0.06);
+  }
+  .shadow-card-hover {
+    box-shadow: 0 2px 4px hsl(var(--shadow-color) / 0.05),
+      0 12px 28px -8px hsl(var(--shadow-color) / 0.12);
+  }
+  .shadow-featured {
+    box-shadow: 0 1px 2px hsl(var(--shadow-color) / 0.05),
+      0 8px 24px -6px hsl(var(--shadow-color) / 0.1);
+  }
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 hsl(var(--active) / 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 4px hsl(var(--active) / 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
