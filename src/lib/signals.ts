@@ -1,6 +1,8 @@
 import {
+  CONFIDENCE_ORDER,
   confidenceRank,
   type Confidence,
+  type HistoricalSignal,
   type Market,
   type SignalStatus,
   type TradingSignal,
@@ -91,6 +93,74 @@ export function summarizeDay(signals: TradingSignal[]): DaySummary {
     tp1: real.filter((s) => s.status === "TP1_HIT").length,
     tp2: real.filter((s) => s.status === "TP2_HIT").length,
     sl: real.filter((s) => s.status === "SL_HIT").length,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Performance                                                         */
+/* ------------------------------------------------------------------ */
+
+export type PerformanceSummary = {
+  /** Setups that reached a target or a stop — the only fair win-rate base. */
+  resolved: number;
+  wins: number;
+  losses: number;
+  /** 0–1, or null when nothing has resolved yet. */
+  winRate: number | null;
+  /** Mean confidence grade across published setups, rounded to a grade. */
+  avgConfidence: Confidence | null;
+};
+
+const WIN_RESULTS = ["TP1_HIT", "TP2_HIT"];
+const LOSS_RESULTS = ["SL_HIT"];
+
+/** Nearest letter grade for a fractional confidence rank. */
+function rankToConfidence(rank: number): Confidence {
+  return CONFIDENCE_ORDER.reduce((best, c) =>
+    Math.abs(confidenceRank[c] - rank) < Math.abs(confidenceRank[best] - rank)
+      ? c
+      : best,
+  );
+}
+
+/**
+ * Track record derived from closed setups: the historical feed plus any of
+ * today's signals that already closed. Expired and cancelled setups are
+ * excluded — they say nothing about whether the analysis was right.
+ */
+export function summarizePerformance(
+  history: HistoricalSignal[],
+  signals: TradingSignal[],
+): PerformanceSummary {
+  const closed: { confidence?: Confidence; result: string }[] = [
+    ...history.map((h) => ({ confidence: h.confidence, result: h.result })),
+    ...signals
+      .filter((s) => DONE_STATUSES.includes(s.status as SignalStatus))
+      .map((s) => ({ confidence: s.confidence, result: s.status })),
+  ];
+
+  const resolved = closed.filter(
+    (c) =>
+      WIN_RESULTS.includes(c.result) ||
+      LOSS_RESULTS.includes(c.result),
+  );
+  const wins = resolved.filter((c) => WIN_RESULTS.includes(c.result)).length;
+
+  const graded = closed.filter(
+    (c): c is { confidence: Confidence; result: string } =>
+      c.confidence != null,
+  );
+  const avgRank = graded.length
+    ? graded.reduce((sum, c) => sum + confidenceRank[c.confidence], 0) /
+      graded.length
+    : 0;
+
+  return {
+    resolved: resolved.length,
+    wins,
+    losses: resolved.length - wins,
+    winRate: resolved.length ? wins / resolved.length : null,
+    avgConfidence: graded.length ? rankToConfidence(avgRank) : null,
   };
 }
 
@@ -186,4 +256,13 @@ export const CONFIDENCE_DESCRIPTION: Record<Confidence, string> = {
   "B+": "Moderate-high confidence",
   B: "Moderate confidence",
   C: "Lower confidence",
+};
+
+/** Text colour per grade — used for numeric/letter values outside a badge. */
+export const CONFIDENCE_TEXT: Record<Confidence, string> = {
+  "A+": "text-conf-aplus",
+  A: "text-conf-a",
+  "B+": "text-conf-bplus",
+  B: "text-conf-b",
+  C: "text-conf-c",
 };

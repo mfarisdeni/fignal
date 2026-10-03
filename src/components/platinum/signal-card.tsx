@@ -1,6 +1,7 @@
 import { ConfidenceBadge } from "./confidence-badge";
 import { DirectionBadge } from "./direction-badge";
 import { PriceMetric } from "./price-metric";
+import { SignalReason } from "./signal-reason";
 import { SignalStatusBadge } from "./signal-status-badge";
 import { formatEntry, formatPrice, formatTimeWIB } from "@/lib/signals";
 import type { TradingSignal } from "@/types/signal";
@@ -39,6 +40,8 @@ export function SignalCard({
             <SignalStatusBadge status={signal.status} />
           </div>
         </div>
+
+        <SignalReason reason={signal.reason} className="mt-2.5" />
 
         <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
           <PriceMetric

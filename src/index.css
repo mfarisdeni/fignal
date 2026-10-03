@@ -85,6 +85,12 @@
 
   html {
     scroll-behavior: smooth;
+    color-scheme: light;
+  }
+
+  /* Native widgets (scrollbars, form controls) follow the active theme */
+  .dark {
+    color-scheme: dark;
   }
 
   body {

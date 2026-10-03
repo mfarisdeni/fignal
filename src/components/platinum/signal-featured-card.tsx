@@ -1,6 +1,7 @@
 import { ConfidenceBadge } from "./confidence-badge";
 import { DirectionBadge } from "./direction-badge";
 import { PriceMetric } from "./price-metric";
+import { SignalReason } from "./signal-reason";
 import { SignalStatusBadge } from "./signal-status-badge";
 import { cn } from "@/lib/utils";
 import { formatEntry, formatPrice, formatTimeWIB } from "@/lib/signals";
@@ -48,6 +49,8 @@ export function SignalFeaturedCard({
             <SignalStatusBadge status={signal.status} />
           </div>
         </div>
+
+        <SignalReason reason={signal.reason} className="mt-3" />
 
         {/* Entry area — the single most important value */}
         <div

@@ -26,6 +26,8 @@ export type TradingSignal = {
   tp2?: number;
   status: SignalStatus | "NO_TRADE";
   generatedAt: string; // ISO 8601
+  /** One-line rationale for taking this setup — shown under the pair name. */
+  reason?: string;
   note?: string;
 };
 

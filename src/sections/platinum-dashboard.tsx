@@ -15,6 +15,7 @@ import {
   filterSignals,
   splitFeatured,
   summarizeDay,
+  summarizePerformance,
   type StatusFilter,
 } from "@/lib/signals";
 import type { Market } from "@/types/signal";
@@ -34,6 +35,11 @@ export function PlatinumDashboard() {
   const [status, setStatus] = useState<StatusFilter>("ALL");
 
   const summary = useMemo(() => summarizeDay(signals), [signals]);
+
+  const performance = useMemo(
+    () => summarizePerformance(history, signals),
+    [history, signals],
+  );
 
   const { featured, rest, noTrade } = useMemo(() => {
     const filtered = filterSignals(signals, market, status);
@@ -64,7 +70,7 @@ export function PlatinumDashboard() {
           </div>
         ) : view === "signals" ? (
           <div className="mt-6 space-y-6">
-            <MarketSummary summary={summary} />
+            <MarketSummary summary={summary} performance={performance} />
 
             {/* Sticky filter bar on mobile for thumb reach */}
             <div className="sticky top-14 z-20 -mx-4 bg-background/90 px-0 py-2 backdrop-blur-md sm:static sm:mx-0 sm:bg-transparent sm:py-0 sm:backdrop-blur-none">
@@ -104,6 +110,8 @@ export function PlatinumDashboard() {
           </div>
         ) : (
           <div className="mt-6 space-y-6">
+            <MarketSummary summary={summary} performance={performance} />
+
             <section aria-label="Signal history">
               <h2 className="mb-3 text-sm font-semibold tracking-tight">
                 Recent history

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Gem, LogOut, Menu, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,11 +41,13 @@ export function FignalMark({ className }: { className?: string }) {
 }
 
 function ThemeToggle() {
-  const [dark, setDark] = useState(false);
-
-  useEffect(() => {
-    setDark(document.documentElement.classList.contains("dark"));
-  }, []);
+  // Dark is the default; index.html sets the class before first paint, so the
+  // DOM is already authoritative on the first render.
+  const [dark, setDark] = useState(
+    () =>
+      typeof document !== "undefined" &&
+      document.documentElement.classList.contains("dark"),
+  );
 
   const toggle = () => {
     const next = !dark;

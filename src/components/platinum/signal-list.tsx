@@ -61,9 +61,16 @@ export function SignalList({
   return (
     <div className="space-y-3 sm:space-y-4">
       {featured && <SignalFeaturedCard signal={featured} />}
-      {rest.map((s, i) => (
-        <SignalCard key={s.id} signal={s} index={i + 1} />
-      ))}
+
+      {/* One card per row on mobile, two per row on desktop. */}
+      {rest.length > 0 && (
+        <div className="grid grid-cols-1 items-start gap-3 sm:gap-4 lg:grid-cols-2">
+          {rest.map((s, i) => (
+            <SignalCard key={s.id} signal={s} index={i + 1} />
+          ))}
+        </div>
+      )}
+
       {noTrade.map((s) => (
         <NoTradeState
           key={s.id}

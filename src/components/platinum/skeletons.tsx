@@ -15,6 +15,7 @@ function SkeletonCard({ featured = false }: { featured?: boolean }) {
         <Skeleton className="ml-auto h-6 w-20 rounded-full" />
       </div>
       {featured && <Skeleton className="mt-5 h-[68px] w-full rounded-md" />}
+      <Skeleton className="mt-3 h-3 w-full max-w-[52ch]" />
       <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i}>
@@ -32,8 +33,8 @@ export function DashboardSkeleton() {
   return (
     <div role="status" aria-label="Loading signals" className="space-y-6">
       {/* Summary skeleton */}
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 sm:gap-3">
-        {Array.from({ length: 5 }).map((_, i) => (
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-7">
+        {Array.from({ length: 7 }).map((_, i) => (
           <div
             key={i}
             className="rounded-lg border border-border bg-card px-3.5 py-3 shadow-card"
@@ -46,8 +47,12 @@ export function DashboardSkeleton() {
 
       <div className="space-y-3 sm:space-y-4">
         <SkeletonCard featured />
-        <SkeletonCard />
-        <SkeletonCard />
+        {/* Mirrors the feed: one card per row on mobile, two on desktop. */}
+        <div className="grid grid-cols-1 items-start gap-3 sm:gap-4 lg:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
       </div>
 
       {/* History skeleton */}
