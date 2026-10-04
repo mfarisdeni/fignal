@@ -31,3 +31,8 @@ reference.png
 # Next.js
 .next/
 next-env.d.ts
+
+# Service-account keys and build caches - never commit
+*-firebase-adminsdk-*.json
+*.tsbuildinfo
+next-env.d.ts

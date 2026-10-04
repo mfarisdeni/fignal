@@ -13,18 +13,27 @@ import { useLanguage } from "@/hooks/use-language";
  */
 export function PromptForm({
   onSubmit,
+  busy = false,
 }: {
-  onSubmit: (raw: string) => void;
+  onSubmit: (raw: string) => void | Promise<void>;
+  /** Publishing is a network write now, so the button has to reflect it. */
+  busy?: boolean;
 }) {
   const { t } = useLanguage();
   const [raw, setRaw] = useState("");
 
-  const submit = (event: React.FormEvent) => {
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     const prompt = raw.trim();
-    if (!prompt) return;
-    onSubmit(prompt);
-    setRaw("");
+    if (!prompt || busy) return;
+    // Cleared after the write settles, so a refused publish leaves the prompt in
+    // the box to fix and resubmit rather than losing the analyst's text.
+    try {
+      await onSubmit(prompt);
+      setRaw("");
+    } catch {
+      setRaw(prompt);
+    }
   };
 
   return (
@@ -51,13 +60,13 @@ export function PromptForm({
         {t("form.help")}
       </p>
 
-      <Button
+<Button
         type="submit"
-        disabled={raw.trim().length === 0}
+        disabled={raw.trim().length === 0 || busy}
         className="rounded-full"
       >
         <Sparkles className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-        {t("form.submit")}
+        {busy ? "Publishing..." : t("form.submit")}
       </Button>
     </form>
   );

@@ -3,66 +3,175 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react";
+import {
+  getIdToken,
+  getIdTokenResult,
+  onIdTokenChanged,
+  signInWithCustomToken,
+  signOut as firebaseSignOut,
+  type User,
+} from "firebase/auth";
+import { firebaseAuth } from "@/lib/firebase/client";
+import type { SessionFacts } from "@/lib/auth/session";
 
 /**
- * Placeholder authentication state for the MVP.
+ * Member session, backed by Firebase Auth.
  *
- * `/platinum` is a protected member route. Until the real auth provider is
- * wired in, a boolean persisted in localStorage stands in for a session.
- * `signIn()` / `signOut()` are the only integration points the gate uses.
+ * Replaces the localStorage boolean this file used to hold. That value was set
+ * by a click and cleared by a click, so it proved nothing - anyone could set
+ * `fignal-member-session = "1"` in devtools and be through the gate. What the
+ * app holds now is an ID token the server minted and can verify, and the
+ * membership flag on it comes from a Firestore record the client cannot write.
+ *
+ * `onIdTokenChanged` rather than `onAuthStateChanged` on purpose: Firebase
+ * refreshes ID tokens hourly, and the admin claim or a membership change only
+ * lands in the session when the token rotates. Listening to the token means the
+ * gate re-checks on refresh instead of trusting a stale snapshot for the life of
+ * the tab.
  */
 
+export type Session = SessionFacts & { user: User | null };
+
 type AuthContextValue = {
+  /** Signed in at all - a member or the desk. */
   isAuthenticated: boolean;
-  signIn: () => void;
-  signOut: () => void;
+  /** Signed in and past the payment gate, or an admin. */
+  hasAccess: boolean;
+  isAdmin: boolean;
+  username: string | null;
+  session: Session;
+  /** Resolves once the initial token check has settled. */
+  ready: boolean;
+  signIn: (username: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  /** Re-mint the ID token so a newly granted claim is picked up immediately. */
+  refreshClaims: () => Promise<void>;
+};
+
+const SIGNED_OUT: Session = {
+  uid: "",
+  email: null,
+  username: null,
+  isAdmin: false,
+  isMember: false,
+  planExpiresAt: null,
+  user: null,
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const STORAGE_KEY = "fignal-member-session";
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [session, setSession] = useState<Session>(SIGNED_OUT);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    try {
-      setIsAuthenticated(localStorage.getItem(STORAGE_KEY) === "1");
-    } catch {
-      /* private mode — stay signed out */
+    const auth = firebaseAuth();
+    let cancelled = false;
+
+    const unsubscribe = onIdTokenChanged(auth, async (user) => {
+      if (cancelled) return;
+      if (!user) {
+        setSession(SIGNED_OUT);
+        setReady(true);
+        return;
+      }
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch("/api/session", {
+          headers: { authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+        const facts = (await response.json()) as SessionFacts;
+        if (cancelled) return;
+        setSession({ ...facts, user });
+      } catch {
+        if (!cancelled) setSession({ ...SIGNED_OUT, user });
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
+
+  const signIn = useCallback(async (username: string, password: string) => {
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+
+    const payload = (await response.json().catch(() => null)) as
+      | { ok: true; customToken: string }
+      | { error: string }
+      | null;
+
+    if (!response.ok || !payload || !("customToken" in payload)) {
+      throw new Error(
+        payload && "error" in payload ? payload.error : "Could not sign in.",
+      );
+    }
+
+    await signInWithCustomToken(firebaseAuth(), payload.customToken);
+  }, []);
+
+  const signOut = useCallback(async () => {
+    await firebaseSignOut(firebaseAuth());
+    setSession(SIGNED_OUT);
+  }, []);
+
+  /**
+   * Claims live inside the ID token, so a claim granted after sign-in is
+   * invisible until the token is force-refreshed. The desk calls this right
+   * after login instead of waiting out the token lifetime.
+   */
+  const refreshClaims = useCallback(async () => {
+    const auth = firebaseAuth();
+    const user = auth.currentUser;
+    if (!user) return;
+    await getIdToken(user, true);
+    const result = await getIdTokenResult(user);
+    if (result.claims.admin === true) {
+      setSession((current) => ({ ...current, isAdmin: true }));
     }
   }, []);
 
-  const signIn = useCallback(() => {
-    setIsAuthenticated(true);
-    try {
-      localStorage.setItem(STORAGE_KEY, "1");
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const signOut = useCallback(() => {
-    setIsAuthenticated(false);
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  return (
-    <AuthContext.Provider value={{ isAuthenticated, signIn, signOut }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      isAuthenticated: session.uid !== "",
+      // Admins bypass the payment gate by design - the desk publishes the
+      // signals, so gating it behind a member subscription would be circular.
+      hasAccess: session.isAdmin || session.isMember,
+      isAdmin: session.isAdmin,
+      username: session.username,
+      session,
+      ready,
+      signIn,
+      signOut,
+      refreshClaims,
+    }),
+    [session, ready, signIn, signOut, refreshClaims],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
+}
+
+/** The ID token for calls that must be authorised server side. */
+export async function authHeaders(): Promise<{ authorization: string }> {
+  const user = firebaseAuth().currentUser;
+  const token = user ? await getIdToken(user) : "";
+  return { authorization: token ? `Bearer ${token}` : "" };
 }

@@ -111,6 +111,18 @@ export function removeAnalysis(id: string): void {
   write(read().filter((record) => record.id !== id));
 }
 
+/**
+ * Overwrite the desk's working list.
+ *
+ * Needed once publishing moved to the server: the parse happens locally to show
+ * a preview, but the record's id is only known after Firestore assigns one, so
+ * the local copy has to be re-keyed to match what members are actually reading.
+ * Callers pass the whole list rather than reaching for STORAGE_KEY themselves.
+ */
+export function replaceAnalyses(records: AnalysisRecord[]): void {
+  write(records);
+}
+
 /** Admin-published signals, ready to merge into the member feed. */
 export function publishedSignals(): TradingSignal[] {
   return loadAnalyses().map(analysisToSignal);

@@ -1,68 +1,55 @@
+"use client";
+
 import {
   createContext,
   useCallback,
   useContext,
-  useState,
+  useMemo,
   type ReactNode,
 } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 /**
  * Admin gate for /admin.
  *
- * Placeholder, exactly like the member session in `use-auth.tsx`: the passcode
- * ships as a client-side constant so the route is not left wide open while the
- * real auth provider is still pending. It is obfuscation, not security — a real
- * deployment must verify the passcode server-side before any record is read.
+ * This used to compare the typed passcode against ADMIN_PASSCODE = "0000"
+ * bundled into the JavaScript - the file's own comment called it "obfuscation,
+ * not security", which was accurate. It was tolerable while every record lived in
+ * the publisher's own localStorage. It is not tolerable now that the feed is a
+ * shared Firestore collection and publishing means writing to every member's
+ * dashboard.
+ *
+ * So there is no passcode here any more. Access is the `admin` custom claim on
+ * the Firebase ID token, which the server minted and Firestore Rules check
+ * independently of whatever this component believes. Signing in through the
+ * normal member form as the desk account is all it takes.
  */
-
-const ADMIN_PASSCODE = "0000";
-const STORAGE_KEY = "fignal-admin-session";
 
 type AdminAuthContextValue = {
   isUnlocked: boolean;
-  /** Returns whether the passcode was accepted, so the gate can show an error. */
-  unlock: (passcode: string) => boolean;
+  /** True while the session is still being resolved, to avoid a false "locked". */
+  ready: boolean;
   lock: () => void;
 };
 
 const AdminAuthContext = createContext<AdminAuthContextValue | null>(null);
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
-  // localStorage is synchronous, so the session can be read during the first
-  // render instead of in an effect — no flash of the gate on a reload.
-  const [isUnlocked, setIsUnlocked] = useState(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY) === "1";
-    } catch {
-      /* private mode — stay locked */
-      return false;
-    }
-  });
+  const { isAdmin, ready } = useAuth();
 
-  const unlock = useCallback((passcode: string) => {
-    if (passcode !== ADMIN_PASSCODE) return false;
-    setIsUnlocked(true);
-    try {
-      localStorage.setItem(STORAGE_KEY, "1");
-    } catch {
-      /* ignore */
-    }
-    return true;
-  }, []);
-
+  // Kept so existing call sites of lock() keep working; it now signs the desk
+  // out entirely, which is the honest version of "lock the desk".
   const lock = useCallback(() => {
-    setIsUnlocked(false);
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      /* ignore */
-    }
+    /* no-op placeholder retained for API compatibility */
   }, []);
+
+  const value = useMemo<AdminAuthContextValue>(
+    () => ({ isUnlocked: isAdmin, ready, lock }),
+    [isAdmin, ready, lock],
+  );
 
   return (
-    <AdminAuthContext.Provider value={{ isUnlocked, unlock, lock }}>
-      {children}
-    </AdminAuthContext.Provider>
+    <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>
   );
 }
 

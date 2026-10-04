@@ -1,36 +1,92 @@
-import { useState } from "react";
+"use client";
+
+import { useEffect, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { KeyRound, LockKeyhole } from "lucide-react";
 import { LanguageToggleFloating } from "@/components/layout/language-toggle";
 import { Button } from "@/components/ui/button";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
 import { FignalMark } from "@/components/layout/top-nav";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
-import { useLanguage } from "@/hooks/use-language";
+import { useAuth } from "@/hooks/use-auth";
 
 /**
- * Passcode gate for /admin. Four slots, no hints about the expected value -
- * the admin should already know it, and the route is reached by URL only so
- * it never appears in member navigation.
+ * Gate for /admin.
+ *
+ * There is no passcode here any more. The four-slot form is gone because it
+ * compared what you typed against ADMIN_PASSCODE, a constant shipped in the
+ * JavaScript bundle - readable by anyone who opened devtools, and the only thing
+ * between a stranger and the publish button once the feed became a shared
+ * Firestore collection.
+ *
+ * Access is now the `admin` custom claim on the Firebase ID token: minted by the
+ * server at seed time, checked by this component, and checked independently by
+ * Firestore Rules on the actual write. The desk signs in with its own account,
+ * which is why it can reach this route without a Platinum membership.
  */
-export function AdminGate() {
-  const { unlock } = useAdminAuth();
-  const { t } = useLanguage();
-  const [passcode, setPasscode] = useState("");
-  const [rejected, setRejected] = useState(false);
 
-  const submit = (event: React.FormEvent) => {
+export function AdminGate() {
+  const { isUnlocked, ready } = useAdminAuth();
+  const { signIn, isAuthenticated, refreshClaims, signOut, session } = useAuth();
+
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  // A claim is granted server side, so a tab that was open before the seed ran
+  // would otherwise keep showing the gate with a stale token for up to an hour.
+  useEffect(() => {
+    if (isAuthenticated && !isUnlocked) void refreshClaims();
+  }, [isAuthenticated, isUnlocked, refreshClaims]);
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!unlock(passcode)) {
-      setRejected(true);
-      setPasscode("");
-      return;
+    const data = new FormData(event.currentTarget);
+    setBusy(true);
+    setError("");
+    try {
+      await signIn(String(data.get("username") ?? ""), String(data.get("password") ?? ""));
+      await refreshClaims();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not sign in.");
+    } finally {
+      setBusy(false);
     }
-    setRejected(false);
-  };
+  }
+
+  if (!ready) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-sm text-muted-foreground">Checking your session...</p>
+      </main>
+    );
+  }
+
+  // Already a member, just not the desk - say so instead of offering a form that
+  // cannot succeed.
+  if (isAuthenticated && !isUnlocked) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4 text-center">
+        <FignalMark />
+        <h1 className="mt-6 text-lg font-semibold tracking-tight">
+          Desk access only
+        </h1>
+        <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+          You are signed in as {session.username ?? session.email}, which is not the
+          admin account.
+        </p>
+        <div className="mt-5 flex gap-2.5">
+          <Button variant="outline" className="rounded-full" onClick={() => void signOut()}>
+            Sign out
+          </Button>
+          <Link
+            href="/platinum"
+            className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+          >
+            Go to dashboard
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center bg-background px-4">
@@ -45,42 +101,44 @@ export function AdminGate() {
           <LockKeyhole className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
         </div>
 
-        <h1 className="mt-5 text-xl font-semibold tracking-tight">
-          {t("adminGate.title")}
-        </h1>
+        <h1 className="mt-5 text-xl font-semibold tracking-tight">Desk sign in</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          {t("adminGate.subtitle")}
+          Sign in with the desk account to publish signals.
         </p>
 
-        <form onSubmit={submit} className="mt-7 flex flex-col items-center gap-3">
-          <InputOTP
-            maxLength={4}
-            value={passcode}
-            onChange={(value) => {
-              setPasscode(value);
-              setRejected(false);
-            }}
-            autoFocus
-            aria-label={t("adminGate.passcode")}
-          >
-            <InputOTPGroup>
-              {[0, 1, 2, 3].map((index) => (
-                <InputOTPSlot key={index} index={index} />
-              ))}
-            </InputOTPGroup>
-          </InputOTP>
+        <form onSubmit={onSubmit} className="mt-7 space-y-3 text-left">
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Username</span>
+            <input
+              name="username"
+              autoComplete="username"
+              required
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </label>
 
-          <Button type="submit" className="w-full rounded-full">
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Password</span>
+            <input
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </label>
+
+          {error && (
+            <p role="alert" className="text-xs text-destructive">
+              {error}
+            </p>
+          )}
+
+          <Button type="submit" disabled={busy} className="w-full rounded-full">
             <KeyRound className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-            {t("adminGate.unlock")}
+            {busy ? "Signing in..." : "Sign in"}
           </Button>
         </form>
-
-        {rejected && (
-          <p role="alert" className="mt-4 text-sm text-destructive">
-            {t("adminGate.wrong")}
-          </p>
-        )}
       </div>
     </main>
   );

@@ -45,7 +45,7 @@ function describe(record: AnalysisRecord, t: Translate): string {
  */
 export function AdminDashboard() {
   const { isUnlocked, lock } = useAdminAuth();
-  const { records, submit, setStatus, remove } = useAnalyses();
+  const { records, submit, setStatus, remove, pending } = useAnalyses();
   const { t } = useLanguage();
   const [notice, setNotice] = useState<{ id: string; text: string } | null>(null);
 
@@ -98,11 +98,23 @@ export function AdminDashboard() {
               {t("admin.publishSubtitle")}
             </p>
 
-            <div className="mt-4">
+<div className="mt-4">
               <PromptForm
-                onSubmit={(raw) => {
-                  const record = submit(raw);
-                  setNotice({ id: record.id, text: describe(record, t) });
+                busy={pending}
+                onSubmit={async (raw) => {
+                  // Publishing is a network write that the server can refuse, so
+                  // the confirmation is only shown once Firestore has taken it.
+                  // Reporting success optimistically would tell the desk a signal
+                  // is live while no member can see it.
+                  try {
+                    const record = await submit(raw);
+                    setNotice({ id: record.id, text: describe(record, t) });
+                  } catch (caught) {
+                    setNotice({
+                      id: "",
+                      text: caught instanceof Error ? caught.message : "Could not publish.",
+                    });
+                  }
                 }}
               />
             </div>

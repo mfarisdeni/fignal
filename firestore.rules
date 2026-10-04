@@ -1,0 +1,100 @@
+rules_version = '2';
+
+/**
+ * Fignal Platinum - Firestore rules.
+ *
+ * The admin desk and the payment webhook both write through the Admin SDK,
+ * which bypasses these rules entirely. So every rule below is a statement about
+ * what a *browser* is allowed to do, and nothing more. The important
+ * consequences:
+ *
+ *  - `members` is unwritable from any client. That is the whole point: Platinum
+ *    access is granted by the QRIS webhook, not by anything a member's browser
+ *    can assert.
+ *  - `signals` is admin-write-only. A logged-in member can read the feed but can
+ *    never publish to it, which replaces the old ADMIN_PASSCODE check with
+ *    something that cannot be bypassed from the console.
+ *
+ * Do not copy the pattern from the old Farisium rules, where
+ * `allow write: if request.auth != null` on payments let any signed-in user mark
+ * any order paid.
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
+    /** Server-owned membership. Absent document means not a member. */
+    function hasMembership() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/members/$(request.auth.uid));
+    }
+
+    function membership() {
+      return get(/databases/$(database)/documents/members/$(request.auth.uid)).data;
+    }
+
+    function isActiveMember() {
+      return hasMembership()
+        && membership().active == true
+        // No expiresAt means a perpetual membership rather than a lapsed one.
+        && (membership().expiresAt == null || membership().expiresAt > request.time);
+    }
+
+    // ---- signals -----------------------------------------------------------
+    // The shared feed. This is what finally makes the dashboard work on a phone:
+    // it is no longer a localStorage artefact of whichever browser published.
+    match /signals/{signalId} {
+      allow read: if isAdmin() || isActiveMember();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ---- users -------------------------------------------------------------
+    // A member may read and edit their own profile and nothing else. The role
+    // and username columns are written by the server and are not the member's
+    // to change.
+    match /users/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['displayName', 'locale', 'theme']);
+      allow delete: if false;
+    }
+
+    // ---- members -----------------------------------------------------------
+    // Read-only for the member; written exclusively by the payment webhook via
+    // the Admin SDK.
+    match /members/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // ---- usernames ---------------------------------------------------------
+    // Reservation table, so two people cannot claim the same handle at
+    // registration. Case-insensitive: keys are stored lowercase.
+    match /usernames/{handle} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && !exists(/databases/$(database)/documents/usernames/$(handle));
+      allow update, delete: if false;
+    }
+
+    // ---- payments ----------------------------------------------------------
+    // Visible to the owner and the desk, written only by the server.
+    match /payments/{paymentId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if false;
+    }
+
+    // Anything not matched above is denied by default.
+  }
+}
