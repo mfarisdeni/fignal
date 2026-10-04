@@ -10,7 +10,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { LanguageToggle } from "@/components/layout/language-toggle";
 import { useAuth } from "@/hooks/use-auth";
+import { useLanguage } from "@/hooks/use-language";
 import { cn } from "@/lib/utils";
 
 export type DashboardView = "signals" | "history";
@@ -41,6 +43,8 @@ export function FignalMark({ className }: { className?: string }) {
 }
 
 function ThemeToggle() {
+  const { t } = useLanguage();
+
   // Dark is the default; index.html sets the class before first paint, so the
   // DOM is already authoritative on the first render.
   const [dark, setDark] = useState(
@@ -65,7 +69,7 @@ function ThemeToggle() {
       variant="ghost"
       size="icon"
       onClick={toggle}
-      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={dark ? t("theme.toLight") : t("theme.toDark")}
       className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground"
     >
       {dark ? (
@@ -111,6 +115,7 @@ export function TopNav({
   onViewChange: (v: DashboardView) => void;
 }) {
   const { signOut } = useAuth();
+  const { t } = useLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const go = (v: DashboardView) => {
@@ -121,7 +126,7 @@ export function TopNav({
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-[1280px] items-center gap-3 px-4 sm:px-6">
-        <a href="#" aria-label="Fignal Platinum home" onClick={(e) => e.preventDefault()}>
+        <a href="#" aria-label={t("nav.home")} onClick={(e) => e.preventDefault()}>
           <FignalMark />
         </a>
 
@@ -131,16 +136,19 @@ export function TopNav({
         </span>
 
         {/* Desktop nav */}
-        <nav aria-label="Primary" className="ml-6 hidden items-center gap-1 md:flex">
+        <nav aria-label={t("nav.primary")} className="ml-6 hidden items-center gap-1 md:flex">
           <NavLink active={view === "signals"} onClick={() => onViewChange("signals")}>
-            Signals
+            {t("nav.signals")}
           </NavLink>
           <NavLink active={view === "history"} onClick={() => onViewChange("history")}>
-            History
+            {t("nav.history")}
           </NavLink>
         </nav>
 
         <div className="ml-auto flex items-center gap-1.5">
+          {/* Beside the theme toggle: the two controls that change how the page
+              looks sit together, and both stay reachable on every screen size. */}
+          <LanguageToggle />
           <ThemeToggle />
 
           {/* Mobile menu */}
@@ -150,7 +158,7 @@ export function TopNav({
                 variant="ghost"
                 size="icon"
                 className="h-9 w-9 rounded-full text-muted-foreground md:hidden"
-                aria-label="Open menu"
+                aria-label={t("nav.openMenu")}
               >
                 <Menu className="h-4 w-4" aria-hidden="true" />
               </Button>
@@ -167,7 +175,7 @@ export function TopNav({
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  Signals
+                  {t("nav.signals")}
                 </button>
                 <button
                   type="button"
@@ -179,12 +187,12 @@ export function TopNav({
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  History
+                  {t("nav.history")}
                 </button>
                 <div className="mt-3 border-t border-border pt-3">
                   <span className="inline-flex items-center gap-1 rounded-full border border-conf-aplus/30 bg-conf-aplus/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-conf-aplus">
                     <Gem className="h-3 w-3" aria-hidden="true" />
-                    Platinum member
+                    {t("nav.member")}
                   </span>
                 </div>
               </div>
@@ -196,7 +204,7 @@ export function TopNav({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                aria-label="Account menu"
+                aria-label={t("nav.account")}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-[11px] font-semibold text-background transition-transform duration-150 hover:scale-[1.04]"
               >
                 FM
@@ -204,7 +212,7 @@ export function TopNav({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 bg-card">
               <DropdownMenuLabel className="font-normal">
-                <div className="text-sm font-medium">Platinum member</div>
+                <div className="text-sm font-medium">{t("nav.member")}</div>
                 <div className="text-xs text-muted-foreground">
                   member@fignal.id
                 </div>
@@ -212,7 +220,7 @@ export function TopNav({
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={signOut}>
                 <LogOut className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
-                Sign out
+                {t("nav.signOut")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

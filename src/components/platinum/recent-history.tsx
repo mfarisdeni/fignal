@@ -1,16 +1,9 @@
 import { ConfidenceBadge } from "./confidence-badge";
 import { DirectionBadge } from "./direction-badge";
+import { useLanguage } from "@/hooks/use-language";
 import { cn } from "@/lib/utils";
 import { formatDateShort } from "@/lib/signals";
 import type { HistoricalSignal } from "@/types/signal";
-
-const RESULT_LABEL: Record<HistoricalSignal["result"], string> = {
-  TP1_HIT: "TP1 hit",
-  TP2_HIT: "TP2 hit",
-  SL_HIT: "SL hit",
-  EXPIRED: "Expired",
-  CANCELLED: "Cancelled",
-};
 
 const RESULT_TONE: Record<HistoricalSignal["result"], string> = {
   TP1_HIT: "text-buy border-buy/30 bg-buy/10",
@@ -28,12 +21,13 @@ export function RecentHistory({
   history: HistoricalSignal[];
   limit?: number;
 }) {
+  const { language, t } = useLanguage();
   const rows = limit ? history.slice(0, limit) : history;
 
   if (rows.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-border bg-card/50 px-5 py-8 text-center text-sm text-muted-foreground">
-        No completed signals yet. Results appear here as setups close.
+        {t("history.empty")}
       </p>
     );
   }
@@ -49,7 +43,7 @@ export function RecentHistory({
             <ConfidenceBadge confidence={h.confidence} size="sm" />
           ) : (
             <span className="inline-flex h-5 items-center rounded-md border border-border px-1.5 text-[11px] font-medium text-muted-foreground">
-              Ungraded
+              {t("history.ungraded")}
             </span>
           )}
           <span className="text-sm font-semibold tracking-tight">{h.pair}</span>
@@ -60,10 +54,10 @@ export function RecentHistory({
               RESULT_TONE[h.result],
             )}
           >
-            {RESULT_LABEL[h.result]}
+            {t(`status.${h.result}`)}
           </span>
           <span className="tnum text-xs text-muted-foreground">
-            {formatDateShort(h.closedAt)}
+            {formatDateShort(h.closedAt, language)}
           </span>
         </li>
       ))}

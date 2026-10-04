@@ -10,6 +10,7 @@ import { SignalFilters } from "@/components/platinum/signal-filters";
 import { SignalList } from "@/components/platinum/signal-list";
 import { DashboardSkeleton } from "@/components/platinum/skeletons";
 import { useAuth } from "@/hooks/use-auth";
+import { useLanguage } from "@/hooks/use-language";
 import { useSignals } from "@/hooks/use-signals";
 import {
   filterSignals,
@@ -29,6 +30,7 @@ import type { Market } from "@/types/signal";
 export function PlatinumDashboard() {
   const { isAuthenticated } = useAuth();
   const { signals, history, loading, updatedAt } = useSignals();
+  const { t } = useLanguage();
 
   const [view, setView] = useState<DashboardView>("signals");
   const [market, setMarket] = useState<Market | "ALL">("ALL");
@@ -36,10 +38,7 @@ export function PlatinumDashboard() {
 
   const summary = useMemo(() => summarizeDay(signals), [signals]);
 
-  const performance = useMemo(
-    () => summarizePerformance(signals),
-    [signals],
-  );
+  const performance = useMemo(() => summarizePerformance(signals), [signals]);
 
   const { featured, rest, noTrade } = useMemo(() => {
     const filtered = filterSignals(signals, market, status);
@@ -90,17 +89,17 @@ export function PlatinumDashboard() {
               status={status}
             />
 
-            <section aria-label="Recent history">
+            <section aria-label={t("history.title")}>
               <div className="mb-3 flex items-baseline justify-between">
                 <h2 className="text-sm font-semibold tracking-tight">
-                  Recent history
+                  {t("history.title")}
                 </h2>
                 <button
                   type="button"
                   onClick={() => setView("history")}
                   className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  View all
+                  {t("history.viewAll")}
                 </button>
               </div>
               <RecentHistory history={history} limit={3} />
@@ -112,9 +111,9 @@ export function PlatinumDashboard() {
           <div className="mt-6 space-y-6">
             <MarketSummary summary={summary} performance={performance} />
 
-            <section aria-label="Signal history">
+            <section aria-label={t("history.title")}>
               <h2 className="mb-3 text-sm font-semibold tracking-tight">
-                Recent history
+                {t("history.title")}
               </h2>
               <RecentHistory history={history} />
             </section>

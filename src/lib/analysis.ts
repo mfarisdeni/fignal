@@ -195,7 +195,15 @@ function labelBlocks(text: string): LabelBlock[] {
       continue;
     }
     if (isHeading(trimmed)) {
-      active = null;
+      // A heading that *names* the call or the bias opens that section, so
+      // "TRADE DECISION" over a bare "BUY" still resolves. Every other
+      // heading just closes whatever block was open.
+      const key = normalizeLabel(trimmed);
+      active =
+        DECISION_LABELS.includes(key) || BIAS_LABELS.includes(key)
+          ? { key, start: lineStart, parts: [] }
+          : null;
+      if (active) blocks.push(active);
       continue;
     }
 
@@ -254,6 +262,14 @@ const DECISION_LABELS = [
   "tradedecision",
   "thedecision",
   "decision",
+  "tradedirection",
+  "direction",
+  "recommendation",
+  "outlook",
+  "signal",
+  "sentiment",
+  "setup",
+  "plan",
   "conclusion",
   "action",
   "call",
@@ -546,16 +562,14 @@ export function parseAnalysis(raw: string): ParsedAnalysis {
   };
 }
 
-const CALL_LABEL: Record<TradeCall, string> = {
-  ENTER: "ENTER",
-  WAIT: "WAIT",
-  NO_TRADE: "NO TRADE",
-};
-
-/** The decision line is the first thing a member should read. */
-export function callLabel(record: AnalysisRecord): string {
+/**
+ * The analyst's own decision line, when they wrote one. It is their wording,
+ * not ours, so it is never translated; the UI supplies its own label for the
+ * fallback (see `callText` in the admin card).
+ */
+export function decisionLabel(record: AnalysisRecord): string | undefined {
   const said = record.decision?.split("\n")[0]?.trim().toUpperCase();
-  return said ? said.slice(0, 48) : CALL_LABEL[record.call];
+  return said ? said.slice(0, 48) : undefined;
 }
 
 function firstSentence(text: string | undefined, limit = 180): string | undefined {
@@ -572,7 +586,7 @@ function firstSentence(text: string | undefined, limit = 180): string | undefine
  * a wait, not a market order, before reading the numbers.
  */
 function buildReason(record: AnalysisRecord): string | undefined {
-  const parts = [callLabel(record)];
+  const parts = [decisionLabel(record)];
   if (record.sniper) parts.push(record.sniper);
   const why = firstSentence(record.reason);
   if (why) parts.push(why);

@@ -1,4 +1,9 @@
-export type Confidence = "A+" | "A" | "A-" | "B+" | "B" | "B-" | "C";
+/**
+ * The desk only stands behind four grades. A-, B- and C are deliberately not
+ * offered: a prompt graded below B is reported as ungraded rather than shown
+ * as a grade the desk does not use.
+ */
+export type Confidence = "A+" | "A" | "B+" | "B";
 
 export type SignalDirection = "BUY" | "SELL";
 
@@ -100,24 +105,13 @@ export type HistoricalSignal = {
 
 /** Deterministic confidence ranking — the single source of truth for ordering. */
 export const confidenceRank: Record<Confidence, number> = {
-  "A+": 7,
-  A: 6,
-  "A-": 5,
-  "B+": 4,
-  B: 3,
-  "B-": 2,
-  C: 1,
+  "A+": 4,
+  A: 3,
+  "B+": 2,
+  B: 1,
 };
 
-export const CONFIDENCE_ORDER: Confidence[] = [
-  "A+",
-  "A",
-  "A-",
-  "B+",
-  "B",
-  "B-",
-  "C",
-];
+export const CONFIDENCE_ORDER: Confidence[] = ["A+", "A", "B+", "B"];
 
 export const MARKETS: Market[] = [
   "XAUUSD",

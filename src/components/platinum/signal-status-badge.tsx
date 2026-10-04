@@ -1,5 +1,5 @@
+import { useLanguage } from "@/hooks/use-language";
 import { cn } from "@/lib/utils";
-import { STATUS_LABEL } from "@/lib/signals";
 import type { TradingSignal } from "@/types/signal";
 
 type Status = TradingSignal["status"];
@@ -35,7 +35,9 @@ export function SignalStatusBadge({
   status: Status;
   className?: string;
 }) {
+  const { t } = useLanguage();
   const live = status === "ACTIVE";
+
   return (
     <span
       className={cn(
@@ -52,7 +54,7 @@ export function SignalStatusBadge({
         )}
         aria-hidden="true"
       />
-      {STATUS_LABEL[status]}
+      {t(`status.${status}`)}
     </span>
   );
 }

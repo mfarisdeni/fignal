@@ -4,11 +4,8 @@ import type { Confidence } from "@/types/signal";
 const styles: Record<Confidence, string> = {
   "A+": "bg-conf-aplus/10 text-conf-aplus border-conf-aplus/30",
   A: "bg-conf-a/10 text-conf-a border-conf-a/30",
-  "A-": "bg-conf-a/10 text-conf-a border-conf-a/30",
   "B+": "bg-conf-bplus/10 text-conf-bplus border-conf-bplus/30",
   B: "bg-conf-b/10 text-conf-b border-conf-b/30",
-  "B-": "bg-conf-b/10 text-conf-b border-conf-b/30",
-  C: "bg-conf-c/10 text-conf-c border-conf-c/25",
 };
 
 export function ConfidenceBadge({

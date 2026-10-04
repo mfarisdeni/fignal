@@ -1,6 +1,7 @@
 import { NoTradeState } from "./no-trade-state";
 import { SignalCard } from "./signal-card";
 import { SignalFeaturedCard } from "./signal-featured-card";
+import { useLanguage } from "@/hooks/use-language";
 import type { StatusFilter } from "@/lib/signals";
 import type { Market, TradingSignal } from "@/types/signal";
 
@@ -22,40 +23,23 @@ export function SignalList({
   market: Market | "ALL";
   status: StatusFilter;
 }) {
+  const { t } = useLanguage();
   const nothing = !featured && rest.length === 0 && noTrade.length === 0;
 
   if (nothing) {
     if (status === "ACTIVE") {
-      return (
-        <NoTradeState
-          note="No active signals right now. New setups are published as the structure develops."
-        />
-      );
+      return <NoTradeState note={t("empty.noActive")} />;
     }
     if (status === "COMPLETED") {
-      return (
-        <NoTradeState note="No completed signals yet today. Results appear here as targets or stops are reached." />
-      );
+      return <NoTradeState note={t("empty.noCompleted")} />;
     }
     if (market === "BTCUSD") {
-      return (
-        <NoTradeState
-          pair="BTCUSD"
-          note="No BTC setup published. Weekend analyses appear here as the desk releases them."
-        />
-      );
+      return <NoTradeState pair="BTCUSD" note={t("empty.noBtc")} />;
     }
     if (market !== "ALL") {
-      return (
-        <NoTradeState
-          pair={market}
-          note="Fignal is waiting for a clearer market structure."
-        />
-      );
+      return <NoTradeState pair={market} note={t("empty.waiting")} />;
     }
-    return (
-      <NoTradeState note="No signals published yet today. Setups appear here as they are released." />
-    );
+    return <NoTradeState note={t("empty.noPublished")} />;
   }
 
   return (
@@ -72,12 +56,7 @@ export function SignalList({
       )}
 
       {noTrade.map((s) => (
-        <NoTradeState
-          key={s.id}
-          pair={s.pair}
-          note={s.note}
-          compact
-        />
+        <NoTradeState key={s.id} pair={s.pair} note={s.note} compact />
       ))}
     </div>
   );

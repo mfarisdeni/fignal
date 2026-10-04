@@ -3,6 +3,7 @@ import { DirectionBadge } from "./direction-badge";
 import { PriceMetric } from "./price-metric";
 import { SignalReason } from "./signal-reason";
 import { SignalStatusBadge } from "./signal-status-badge";
+import { useLanguage } from "@/hooks/use-language";
 import { formatEntry, formatPrice, formatTimeWIB } from "@/lib/signals";
 import type { TradingSignal } from "@/types/signal";
 
@@ -18,12 +19,16 @@ export function SignalCard({
   signal: TradingSignal;
   index?: number;
 }) {
+  const { language, t } = useLanguage();
   const buy = signal.direction === "BUY";
+
   return (
     <article
-      aria-label={`Signal: ${signal.pair} ${signal.direction}, status ${
-        signal.status
-      }`}
+      aria-label={t("card.ariaSignal", {
+        pair: signal.pair,
+        direction: signal.direction,
+        status: t(`status.${signal.status}`),
+      })}
       className="animate-enter group rounded-lg border border-border bg-card shadow-card transition-[box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-card-hover"
       style={{ animationDelay: `${Math.min(index, 6) * 60}ms` }}
     >
@@ -35,7 +40,7 @@ export function SignalCard({
           <h3 className="text-[15px] font-semibold tracking-tight">
             {signal.pair}
           </h3>
-          <DirectionBadge direction={signal.direction as "BUY" | "SELL"} />
+          <DirectionBadge direction={signal.direction} />
           <div className="ml-auto">
             <SignalStatusBadge status={signal.status} />
           </div>
@@ -45,30 +50,30 @@ export function SignalCard({
 
         <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
           <PriceMetric
-            label="Entry"
+            label={t("card.entry")}
             value={formatEntry(signal)}
             emphasis="strong"
             className={buy ? "border-l-2 border-buy/40 pl-2.5" : "border-l-2 border-sell/40 pl-2.5"}
           />
           <PriceMetric
-            label="Stop loss"
-            value={signal.sl != null ? formatPrice(signal.sl, signal.pair) : "—"}
+            label={t("card.stopLoss")}
+            value={signal.sl != null ? formatPrice(signal.sl, signal.pair) : "-"}
             tone="sell"
           />
           <PriceMetric
             label="TP1"
-            value={signal.tp1 != null ? formatPrice(signal.tp1, signal.pair) : "—"}
+            value={signal.tp1 != null ? formatPrice(signal.tp1, signal.pair) : "-"}
             tone="buy"
             emphasis="strong"
           />
           <PriceMetric
             label="TP2"
-            value={signal.tp2 != null ? formatPrice(signal.tp2, signal.pair) : "—"}
+            value={signal.tp2 != null ? formatPrice(signal.tp2, signal.pair) : "-"}
           />
         </dl>
 
         <p className="mt-4 text-xs text-muted-foreground tnum">
-          Generated {formatTimeWIB(signal.generatedAt)}
+          {t("card.generated", { time: formatTimeWIB(signal.generatedAt, language) })}
         </p>
       </div>
     </article>

@@ -1,6 +1,8 @@
 import { ArrowRight, LockKeyhole } from "lucide-react";
+import { LanguageToggleFloating } from "@/components/layout/language-toggle";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { useLanguage } from "@/hooks/use-language";
 import { FignalMark } from "@/components/layout/top-nav";
 
 /**
@@ -10,9 +12,12 @@ import { FignalMark } from "@/components/layout/top-nav";
  */
 export function AuthGate() {
   const { signIn } = useAuth();
+  const { t } = useLanguage();
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+    <main className="relative flex min-h-screen flex-col items-center justify-center bg-background px-4">
+      <LanguageToggleFloating />
+
       <div className="animate-enter w-full max-w-sm text-center">
         <div className="flex justify-center">
           <FignalMark />
@@ -23,30 +28,29 @@ export function AuthGate() {
         </div>
 
         <h1 className="mt-5 text-xl font-semibold tracking-tight">
-          Platinum Members Only
+          {t("auth.title")}
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          Sign in to access the latest Fignal signals.
+          {t("auth.subtitle")}
         </p>
 
         <div className="mt-7 flex flex-col gap-2.5">
           <Button onClick={signIn} className="rounded-full">
-            Sign In
+            {t("auth.signIn")}
           </Button>
           <Button
             variant="outline"
             className="rounded-full"
             onClick={signIn}
-            aria-label="Join Platinum (checkout coming soon)"
+            aria-label={t("auth.joinAria")}
           >
-            Join Platinum
+            {t("auth.join")}
             <ArrowRight className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
           </Button>
         </div>
 
         <p className="mt-6 text-xs leading-relaxed text-muted-foreground">
-          Trading involves significant risk. Signals are analytical information
-          and are not a guarantee of future results.
+          {t("risk.body")}
         </p>
       </div>
     </main>

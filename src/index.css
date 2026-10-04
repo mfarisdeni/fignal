@@ -32,11 +32,6 @@
     --active: 158 85% 25%;
     --info: 224 76% 42%;
     --upcoming: 28 90% 32%;
-    --conf-aplus: 33 90% 32%;
-    --conf-a: 243 75% 46%;
-    --conf-bplus: 175 84% 24%;
-    --conf-b: 215 14% 40%;
-    --conf-c: 40 5% 46%;
 
     /* Elevation */
     --shadow-color: 0 0% 10%;
@@ -68,11 +63,6 @@
     --active: 158 64% 55%;
     --info: 213 94% 70%;
     --upcoming: 43 96% 60%;
-    --conf-aplus: 43 96% 60%;
-    --conf-a: 234 89% 76%;
-    --conf-bplus: 172 66% 52%;
-    --conf-b: 215 18% 68%;
-    --conf-c: 44 6% 60%;
 
     --shadow-color: 0 0% 0%;
   }

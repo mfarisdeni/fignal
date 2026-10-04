@@ -1,9 +1,10 @@
 import { MoonStar } from "lucide-react";
+import { useLanguage } from "@/hooks/use-language";
 import { cn } from "@/lib/utils";
 import type { TradingSignal } from "@/types/signal";
 
 /**
- * Elegant NO TRADE state — the product never implies that every market
+ * Elegant NO TRADE state - the product never implies that every market
  * always has a setup. Used for a pair with no valid structure, and as the
  * generic empty feed state.
  */
@@ -18,6 +19,8 @@ export function NoTradeState({
   compact?: boolean;
   className?: string;
 }) {
+  const { t } = useLanguage();
+
   return (
     <div
       role="status"
@@ -31,10 +34,10 @@ export function NoTradeState({
         <MoonStar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
       </div>
       <p className="mt-3 text-sm font-medium">
-        {pair ? `${pair} — No valid setup` : "No valid setup"}
+        {pair ? t("empty.noSetup", { pair }) : t("empty.noSetupGeneric")}
       </p>
       <p className="mx-auto mt-1 max-w-sm text-[13px] leading-relaxed text-muted-foreground">
-        {note ?? "Fignal is waiting for a clearer market structure."}
+        {note ?? t("empty.waiting")}
       </p>
     </div>
   );

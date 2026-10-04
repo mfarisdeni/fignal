@@ -3,12 +3,13 @@ import { DirectionBadge } from "./direction-badge";
 import { PriceMetric } from "./price-metric";
 import { SignalReason } from "./signal-reason";
 import { SignalStatusBadge } from "./signal-status-badge";
+import { useLanguage } from "@/hooks/use-language";
 import { cn } from "@/lib/utils";
 import { formatEntry, formatPrice, formatTimeWIB } from "@/lib/signals";
 import type { TradingSignal } from "@/types/signal";
 
 /**
- * Featured signal — the highest-confidence setup, visually elevated above
+ * Featured signal - the highest-confidence setup, visually elevated above
  * the rest of the feed. All core values are visible without navigation.
  */
 export function SignalFeaturedCard({
@@ -18,13 +19,18 @@ export function SignalFeaturedCard({
   signal: TradingSignal;
   className?: string;
 }) {
+  const { language, t } = useLanguage();
   const buy = signal.direction === "BUY";
+
   return (
     <article
-      aria-label={`Featured signal: ${signal.pair} ${signal.direction}`}
+      aria-label={t("card.ariaFeatured", {
+        pair: signal.pair,
+        direction: signal.direction,
+      })}
       className={cn(
         "animate-enter relative overflow-hidden rounded-lg border border-border bg-card shadow-featured",
-        // hairline accent in the direction colour — subtle, not a block
+        // hairline accent in the direction colour - subtle, not a block
         buy ? "ring-1 ring-buy/20" : "ring-1 ring-sell/20",
         className,
       )}
@@ -33,7 +39,7 @@ export function SignalFeaturedCard({
         {/* Header row */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Top setup
+            {t("card.topSetup")}
           </span>
           {signal.confidence && (
             <ConfidenceBadge confidence={signal.confidence} size="lg" />
@@ -41,10 +47,7 @@ export function SignalFeaturedCard({
           <h3 className="text-lg font-semibold tracking-tight">
             {signal.pair}
           </h3>
-          <DirectionBadge
-            direction={signal.direction as "BUY" | "SELL"}
-            size="lg"
-          />
+          <DirectionBadge direction={signal.direction} size="lg" />
           <div className="ml-auto">
             <SignalStatusBadge status={signal.status} />
           </div>
@@ -52,7 +55,7 @@ export function SignalFeaturedCard({
 
         <SignalReason reason={signal.reason} className="mt-3" />
 
-        {/* Entry area — the single most important value */}
+        {/* Entry area - the single most important value */}
         <div
           className={cn(
             "mt-5 rounded-md border px-4 py-3.5",
@@ -62,7 +65,7 @@ export function SignalFeaturedCard({
           )}
         >
           <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-            Entry area
+            {t("card.entryArea")}
           </div>
           <div className="font-mono-num tnum mt-1 text-2xl font-semibold tracking-tight sm:text-[28px]">
             {formatEntry(signal)}
@@ -72,26 +75,26 @@ export function SignalFeaturedCard({
         {/* Risk & targets */}
         <dl className="mt-5 grid grid-cols-3 gap-4">
           <PriceMetric
-            label="Stop loss"
-            value={signal.sl != null ? formatPrice(signal.sl, signal.pair) : "—"}
+            label={t("card.stopLoss")}
+            value={signal.sl != null ? formatPrice(signal.sl, signal.pair) : "-"}
             tone="sell"
             emphasis="strong"
           />
           <PriceMetric
-            label="Take profit 1"
-            value={signal.tp1 != null ? formatPrice(signal.tp1, signal.pair) : "—"}
+            label={t("card.takeProfit1")}
+            value={signal.tp1 != null ? formatPrice(signal.tp1, signal.pair) : "-"}
             tone="buy"
             emphasis="strong"
           />
           <PriceMetric
-            label="Take profit 2"
-            value={signal.tp2 != null ? formatPrice(signal.tp2, signal.pair) : "—"}
+            label={t("card.takeProfit2")}
+            value={signal.tp2 != null ? formatPrice(signal.tp2, signal.pair) : "-"}
             emphasis="strong"
           />
         </dl>
 
         <p className="mt-5 text-xs text-muted-foreground tnum">
-          Generated {formatTimeWIB(signal.generatedAt)}
+          {t("card.generated", { time: formatTimeWIB(signal.generatedAt, language) })}
         </p>
       </div>
     </article>

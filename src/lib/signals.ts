@@ -1,4 +1,10 @@
 import {
+  DEFAULT_LANGUAGE,
+  LOCALE,
+  translate,
+  type Language,
+} from "@/lib/i18n";
+import {
   CONFIDENCE_ORDER,
   confidenceRank,
   type Confidence,
@@ -229,23 +235,25 @@ export function formatEntry(signal: TradingSignal): string {
     return min;
   return `${min} – ${formatPrice(signal.entryMax, signal.pair)}`;
 }
-
 const WIB = "Asia/Jakarta";
 
-/** "20:04 WIB" */
-export function formatTimeWIB(iso: string): string {
-  const t = new Intl.DateTimeFormat("en-GB", {
+/** "20:04 WIB" / "20.04 WIB" */
+export function formatTimeWIB(iso: string, language: Language = DEFAULT_LANGUAGE): string {
+  const time = new Intl.DateTimeFormat(LOCALE[language], {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
     timeZone: WIB,
   }).format(new Date(iso));
-  return `${t} WIB`;
+  return `${time} WIB`;
 }
 
-/** "Thu 2 Oct" */
-export function formatDateShort(iso: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
+/** e.g. "Thu 2 Oct" / "Kam 2 Okt" */
+export function formatDateShort(
+  iso: string,
+  language: Language = DEFAULT_LANGUAGE,
+): string {
+  return new Intl.DateTimeFormat(LOCALE[language], {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -253,59 +261,39 @@ export function formatDateShort(iso: string): string {
   }).format(new Date(iso));
 }
 
-/** e.g. "Friday · London / New York session" or "Saturday · Weekend — BTC focus" */
-export function sessionLabel(now = new Date()): string {
-  const day = new Intl.DateTimeFormat("en-US", {
+/** e.g. "Friday · London / New York session" */
+export function sessionLabel(
+  language: Language = DEFAULT_LANGUAGE,
+  now = new Date(),
+): string {
+  const day = new Intl.DateTimeFormat(LOCALE[language], {
     weekday: "long",
     timeZone: WIB,
   }).format(now);
   const hour = Number(
-    new Intl.DateTimeFormat("en-GB", {
+    new Intl.DateTimeFormat(LOCALE[language], {
       hour: "2-digit",
       hour12: false,
       timeZone: WIB,
     }).format(now),
   );
   const isWeekend = day === "Saturday" || day === "Sunday";
-  if (isWeekend) return `${day} · Weekend — BTC focus`;
-  if (hour >= 6 && hour < 14) return `${day} · Asia session`;
-  if (hour >= 14 && hour < 22) return `${day} · London / New York session`;
-  return `${day} · Sydney / Tokyo session`;
+
+  if (isWeekend) return translate(language, "session.weekend", { day });
+  if (hour >= 6 && hour < 14) return translate(language, "session.asia");
+  if (hour >= 14 && hour < 22)
+    return translate(language, "session.londonNewYork");
+  return translate(language, "session.sydneyTokyo");
 }
 
 /* ------------------------------------------------------------------ */
 /* Labels & presentation maps                                          */
 /* ------------------------------------------------------------------ */
 
-export const STATUS_LABEL: Record<TradingSignal["status"], string> = {
-  UPCOMING: "Upcoming",
-  ACTIVE: "Active",
-  ENTRY_HIT: "Entry hit",
-  TP1_HIT: "TP1 hit",
-  TP2_HIT: "TP2 hit",
-  SL_HIT: "SL hit",
-  EXPIRED: "Expired",
-  CANCELLED: "Cancelled",
-  NO_TRADE: "No trade",
-};
-
-export const CONFIDENCE_DESCRIPTION: Record<Confidence, string> = {
-  "A+": "Highest confidence",
-  A: "High confidence",
-  "A-": "High confidence",
-  "B+": "Moderate-high confidence",
-  B: "Moderate confidence",
-  "B-": "Moderate confidence",
-  C: "Lower confidence",
-};
-
 /** Text colour per grade — used for numeric/letter values outside a badge. */
 export const CONFIDENCE_TEXT: Record<Confidence, string> = {
   "A+": "text-conf-aplus",
   A: "text-conf-a",
-  "A-": "text-conf-a",
   "B+": "text-conf-bplus",
   B: "text-conf-b",
-  "B-": "text-conf-b",
-  C: "text-conf-c",
 };

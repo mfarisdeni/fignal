@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/hooks/use-language";
 import {
   CONFIDENCE_TEXT,
   type DaySummary,
@@ -6,7 +7,7 @@ import {
 } from "@/lib/signals";
 
 /**
- * Today's summary — counts only. No balances, no profit figures:
+ * Today's summary - counts only. No balances, no profit figures:
  * this dashboard delivers signals, not performance marketing.
  * Win rate and average confidence are track-record figures derived from
  * closed setups, so they are not scoped to today.
@@ -18,6 +19,8 @@ export function MarketSummary({
   summary: DaySummary;
   performance: PerformanceSummary;
 }) {
+  const { t } = useLanguage();
+
   const items: {
     label: string;
     value: string | number;
@@ -25,21 +28,36 @@ export function MarketSummary({
     /** Counts of zero fade back; rates and grades always stay legible. */
     muteWhenZero?: boolean;
   }[] = [
-    { label: "Signals today", value: summary.total, muteWhenZero: true },
+    { label: t("summary.signals"), value: summary.total, muteWhenZero: true },
     {
-      label: "Active",
+      label: t("summary.active"),
       value: summary.active,
       tone: "text-live",
       muteWhenZero: true,
     },
-    { label: "TP1 hit", value: summary.tp1, tone: "text-buy", muteWhenZero: true },
-    { label: "TP2 hit", value: summary.tp2, tone: "text-buy", muteWhenZero: true },
-    { label: "SL hit", value: summary.sl, tone: "text-sell", muteWhenZero: true },
     {
-      label: "Win rate",
+      label: t("summary.tp1"),
+      value: summary.tp1,
+      tone: "text-buy",
+      muteWhenZero: true,
+    },
+    {
+      label: t("summary.tp2"),
+      value: summary.tp2,
+      tone: "text-buy",
+      muteWhenZero: true,
+    },
+    {
+      label: t("summary.sl"),
+      value: summary.sl,
+      tone: "text-sell",
+      muteWhenZero: true,
+    },
+    {
+      label: t("summary.winRate"),
       value:
         performance.winRate == null
-          ? "—"
+          ? "-"
           : `${Math.round(performance.winRate * 100)}%`,
       tone:
         performance.winRate == null
@@ -49,8 +67,8 @@ export function MarketSummary({
             : "text-sell",
     },
     {
-      label: "Avg confidence",
-      value: performance.avgConfidence ?? "—",
+      label: t("summary.avgConfidence"),
+      value: performance.avgConfidence ?? "-",
       tone: performance.avgConfidence
         ? CONFIDENCE_TEXT[performance.avgConfidence]
         : undefined,
@@ -58,7 +76,7 @@ export function MarketSummary({
   ];
 
   return (
-    <section aria-label="Today's summary" className="animate-enter">
+    <section aria-label={t("summary.aria")} className="animate-enter">
       <dl className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-7">
         {items.map((item) => (
           <div

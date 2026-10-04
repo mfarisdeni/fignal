@@ -4,26 +4,36 @@ import { ArrowLeft, Lock, ShieldCheck } from "lucide-react";
 import { AdminGate } from "@/components/admin/admin-gate";
 import { AnalysisRecordCard } from "@/components/admin/analysis-record-card";
 import { PromptForm } from "@/components/admin/prompt-form";
+import { LanguageToggle } from "@/components/layout/language-toggle";
 import { FignalMark } from "@/components/layout/top-nav";
 import { NoTradeState } from "@/components/platinum/no-trade-state";
 import { Button } from "@/components/ui/button";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { useAnalyses } from "@/hooks/use-analyses";
+import { useLanguage } from "@/hooks/use-language";
+import type { MessageKey, MessageVars } from "@/lib/i18n";
 import type { AnalysisRecord } from "@/types/signal";
 
+type Translate = (key: MessageKey, vars?: MessageVars) => string;
+
 /** What the parser managed to lift, in one line, right after a submit. */
-function describe(record: AnalysisRecord): string {
+function describe(record: AnalysisRecord, t: Translate): string {
   const found = [
-    record.entryMin != null ? "entry" : null,
-    record.sl != null ? "SL" : null,
-    record.tp1 != null ? "TP1" : null,
-    record.tp2 != null ? "TP2" : null,
-    record.confidence != null ? `grade ${record.confidence}` : null,
+    record.entryMin != null ? t("field.entry") : null,
+    record.sl != null ? t("field.sl") : null,
+    record.tp1 != null ? t("field.tp1") : null,
+    record.tp2 != null ? t("field.tp2") : null,
+    record.confidence != null
+      ? t("field.grade", { confidence: record.confidence })
+      : null,
   ].filter((part): part is string => part != null);
 
   return found.length
-    ? `${record.pair} published with ${found.join(", ")}.`
-    : `${record.pair} published, but no levels were found — check the prompt.`;
+    ? t("admin.publishedWith", {
+        pair: record.pair,
+        fields: found.join(", "),
+      })
+    : t("admin.publishedNoLevels", { pair: record.pair });
 }
 
 /**
@@ -36,6 +46,7 @@ function describe(record: AnalysisRecord): string {
 export function AdminDashboard() {
   const { isUnlocked, lock } = useAdminAuth();
   const { records, submit, setStatus, remove } = useAnalyses();
+  const { t } = useLanguage();
   const [notice, setNotice] = useState<{ id: string; text: string } | null>(null);
 
   if (!isUnlocked) return <AdminGate />;
@@ -54,17 +65,18 @@ export function AdminDashboard() {
           </span>
 
           <div className="ml-auto flex items-center gap-1.5">
+            <LanguageToggle />
             <Button variant="ghost" size="sm" asChild className="rounded-full">
               <Link to="/platinum">
                 <ArrowLeft className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                Member view
+                {t("admin.memberView")}
               </Link>
             </Button>
             <Button
               variant="ghost"
               size="icon"
               onClick={lock}
-              aria-label="Lock the admin desk"
+              aria-label={t("admin.lock")}
               className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground"
             >
               <Lock className="h-4 w-4" aria-hidden="true" />
@@ -76,19 +88,21 @@ export function AdminDashboard() {
       <main className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 sm:px-6 sm:pt-8">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:items-start">
           <section
-            aria-label="Submit analysis prompt"
+            aria-label={t("admin.publishTitle")}
             className="rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 lg:sticky lg:top-20"
           >
-            <h1 className="text-sm font-semibold tracking-tight">Publish an analysis</h1>
+            <h1 className="text-sm font-semibold tracking-tight">
+              {t("admin.publishTitle")}
+            </h1>
             <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
-              The prompt is stored as-is and read for its summary numbers.
+              {t("admin.publishSubtitle")}
             </p>
 
             <div className="mt-4">
               <PromptForm
                 onSubmit={(raw) => {
                   const record = submit(raw);
-                  setNotice({ id: record.id, text: describe(record) });
+                  setNotice({ id: record.id, text: describe(record, t) });
                 }}
               />
             </div>
@@ -106,17 +120,15 @@ export function AdminDashboard() {
 
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="text-sm font-semibold tracking-tight">
-                Published analyses
+                {t("admin.publishedTitle")}
               </h2>
               <span className="text-xs text-muted-foreground tnum">
-                {records.length} total
+                {t("admin.total", { n: records.length })}
               </span>
             </div>
 
             {records.length === 0 ? (
-              <NoTradeState
-                note="Submit a prompt to publish its entry, stop loss, targets and confidence to the member feed."
-              />
+              <NoTradeState note={t("admin.empty")} />
             ) : (
               records.map((record, index) => (
                 <AnalysisRecordCard

@@ -1,7 +1,10 @@
 import { Info } from "lucide-react";
+import { useLanguage } from "@/hooks/use-language";
 
-/** Subtle, professional risk notice — no fear language, no promises. */
+/** Subtle, professional risk notice - no fear language, no promises. */
 export function RiskNotice() {
+  const { t } = useLanguage();
+
   return (
     <footer className="animate-enter rounded-lg border border-border bg-card/60 px-4 py-3.5">
       <div className="flex items-start gap-2.5">
@@ -10,9 +13,10 @@ export function RiskNotice() {
           aria-hidden="true"
         />
         <p className="text-xs leading-relaxed text-muted-foreground">
-          <span className="font-medium text-foreground/80">Risk notice.</span>{" "}
-          Trading involves significant risk. Signals are analytical information
-          and are not a guarantee of future results.
+          <span className="font-medium text-foreground/80">
+            {t("risk.title")}
+          </span>{" "}
+          {t("risk.body")}
         </p>
       </div>
     </footer>

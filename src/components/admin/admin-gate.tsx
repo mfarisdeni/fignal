@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { KeyRound, LockKeyhole } from "lucide-react";
+import { LanguageToggleFloating } from "@/components/layout/language-toggle";
 import { Button } from "@/components/ui/button";
 import {
   InputOTP,
@@ -8,14 +9,16 @@ import {
 } from "@/components/ui/input-otp";
 import { FignalMark } from "@/components/layout/top-nav";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
+import { useLanguage } from "@/hooks/use-language";
 
 /**
- * Passcode gate for /admin. Four slots, no hints about the expected value —
+ * Passcode gate for /admin. Four slots, no hints about the expected value -
  * the admin should already know it, and the route is reached by URL only so
  * it never appears in member navigation.
  */
 export function AdminGate() {
   const { unlock } = useAdminAuth();
+  const { t } = useLanguage();
   const [passcode, setPasscode] = useState("");
   const [rejected, setRejected] = useState(false);
 
@@ -30,7 +33,9 @@ export function AdminGate() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+    <main className="relative flex min-h-screen flex-col items-center justify-center bg-background px-4">
+      <LanguageToggleFloating />
+
       <div className="animate-enter w-full max-w-sm text-center">
         <div className="flex justify-center">
           <FignalMark />
@@ -40,9 +45,11 @@ export function AdminGate() {
           <LockKeyhole className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
         </div>
 
-        <h1 className="mt-5 text-xl font-semibold tracking-tight">Admin access</h1>
+        <h1 className="mt-5 text-xl font-semibold tracking-tight">
+          {t("adminGate.title")}
+        </h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          Enter the desk passcode to publish analyses.
+          {t("adminGate.subtitle")}
         </p>
 
         <form onSubmit={submit} className="mt-7 flex flex-col items-center gap-3">
@@ -54,7 +61,7 @@ export function AdminGate() {
               setRejected(false);
             }}
             autoFocus
-            aria-label="Admin passcode"
+            aria-label={t("adminGate.passcode")}
           >
             <InputOTPGroup>
               {[0, 1, 2, 3].map((index) => (
@@ -65,13 +72,13 @@ export function AdminGate() {
 
           <Button type="submit" className="w-full rounded-full">
             <KeyRound className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-            Unlock
+            {t("adminGate.unlock")}
           </Button>
         </form>
 
         {rejected && (
           <p role="alert" className="mt-4 text-sm text-destructive">
-            Wrong passcode. Try again.
+            {t("adminGate.wrong")}
           </p>
         )}
       </div>
