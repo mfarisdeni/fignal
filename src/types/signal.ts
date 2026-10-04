@@ -7,18 +7,25 @@ export type Confidence = "A+" | "A" | "B+" | "B";
 
 export type SignalDirection = "BUY" | "SELL";
 
+/**
+ * The markets the parser can name. The first four in MARKETS are the desk's
+ * standing lineup; the rest exist so a pasted prompt that mentions a secondary
+ * market still lands somewhere real instead of reporting the pair as missing.
+ * Adding a market is a one-line change here plus its aliases in MARKET_ALIASES
+ * — the member feed reads this list, it does not hardcode any of it.
+ */
 export type Market =
   | "XAUUSD"
-  | "XAGUSD"
   | "EURUSD"
+  | "US100"
+  | "BTCUSD"
+  | "XAGUSD"
   | "GBPUSD"
   | "AUDUSD"
   | "USDCAD"
   | "EURJPY"
-  | "NAS100"
   | "US30"
-  | "SPX500"
-  | "BTCUSD";
+  | "SPX500";
 
 export type SignalStatus =
   | "UPCOMING"
@@ -113,18 +120,24 @@ export const confidenceRank: Record<Confidence, number> = {
 
 export const CONFIDENCE_ORDER: Confidence[] = ["A+", "A", "B+", "B"];
 
+/**
+ * Order here is member-facing: the four the desk stands behind come first, in
+ * the order traders scan them, and any other detected market follows. The
+ * parser walks this same list, so a market's position also decides which
+ * mention wins when a prompt names more than one.
+ */
 export const MARKETS: Market[] = [
   "XAUUSD",
-  "XAGUSD",
   "EURUSD",
+  "US100",
+  "BTCUSD",
+  "XAGUSD",
   "GBPUSD",
   "AUDUSD",
   "USDCAD",
   "EURJPY",
-  "NAS100",
   "US30",
   "SPX500",
-  "BTCUSD",
 ];
 
 /** Every status an admin-published signal can be moved to. */

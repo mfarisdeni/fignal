@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/hooks/use-language";
 import type { StatusFilter } from "@/lib/signals";
-import { MARKETS, type Market } from "@/types/signal";
+import type { Market } from "@/types/signal";
 
 function Pill({
   active,
@@ -35,13 +35,18 @@ function Pill({
 /**
  * Lightweight filter bar: market pills + state pills.
  * Horizontally scrollable on mobile, no dropdowns.
+ *
+ * `markets` is what the feed currently holds, not the full registry: only pairs
+ * with something behind them earn a pill.
  */
 export function SignalFilters({
+  markets,
   market,
   status,
   onMarketChange,
   onStatusChange,
 }: {
+  markets: Market[];
   market: Market | "ALL";
   status: StatusFilter;
   onMarketChange: (m: Market | "ALL") => void;
@@ -69,20 +74,26 @@ export function SignalFilters({
       aria-label={t("filters.aria")}
       className="space-y-2 sm:space-y-0"
     >
-      <div className="scroll-thin -mx-4 flex items-center gap-2 overflow-x-auto px-4 py-0.5 sm:mx-0 sm:flex-wrap sm:px-0">
-        <Pill active={market === "ALL"} onClick={() => onMarketChange("ALL")}>
-          {t("filters.all")}
-        </Pill>
-        {MARKETS.map((m) => (
-          <Pill key={m} active={market === m} onClick={() => onMarketChange(m)}>
-            {m}
-          </Pill>
-        ))}
+<div className="scroll-thin -mx-4 flex items-center gap-2 overflow-x-auto px-4 py-0.5 sm:mx-0 sm:flex-wrap sm:px-0">
+        {/* Nothing published yet: an "All" market filter would offer no choice,
+            so the market group stays out of the row entirely. */}
+        {markets.length > 0 && (
+          <>
+            <Pill active={market === "ALL"} onClick={() => onMarketChange("ALL")}>
+              {t("filters.all")}
+            </Pill>
+            {markets.map((m) => (
+              <Pill key={m} active={market === m} onClick={() => onMarketChange(m)}>
+                {m}
+              </Pill>
+            ))}
 
-        <span
-          className="mx-1 hidden h-5 w-px shrink-0 bg-border sm:block"
-          aria-hidden="true"
-        />
+            <span
+              className="mx-1 hidden h-5 w-px shrink-0 bg-border sm:block"
+              aria-hidden="true"
+            />
+          </>
+        )}
 
         <div className="hidden items-center gap-2 sm:flex">
           {states.map((state) => (

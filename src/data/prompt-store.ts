@@ -2,6 +2,7 @@ import { analysisToSignal, parseAnalysis } from "@/lib/analysis";
 import {
   CONFIDENCE_ORDER,
   type AnalysisRecord,
+  type Market,
   type SignalStatus,
   type TradingSignal,
 } from "@/types/signal";
@@ -24,16 +25,32 @@ const STORAGE_KEY = "fignal-admin-analysis";
 export const SIGNALS_UPDATED_EVENT = "fignal:signals-updated";
 
 /**
+ * Market names published before the registry was renamed, mapped to the current
+ * spelling. Keyed as plain strings on purpose: "NAS100" is no longer a Market, so
+ * a typed key here would make the one name we still have to accept impossible
+ * to write down.
+ */
+const LEGACY_MARKETS: Record<string, Market> = { NAS100: "US100" };
+
+/**
  * Grades outside the current scale are dropped rather than trusted: an
  * analysis stored before the scale was trimmed to A+/A/B+/B has to read as
  * ungraded, not as a badge the UI cannot render.
+ *
+ * Markets are migrated rather than dropped. The index used to be published as
+ * NAS100 and is now US100 — the same instrument under the name members
+ * actually trade it by, and the one this desk lists — so records written
+ * earlier must not silently disappear from the feed.
  */
 function normalize(record: AnalysisRecord): AnalysisRecord {
-  const { confidence } = record;
-  if (confidence === undefined || CONFIDENCE_ORDER.includes(confidence)) {
-    return record;
-  }
-  return { ...record, confidence: undefined };
+  const { confidence, pair } = record;
+  const market = LEGACY_MARKETS[pair] ?? pair;
+  const grade =
+    confidence !== undefined && CONFIDENCE_ORDER.includes(confidence)
+      ? confidence
+      : undefined;
+  if (market === pair && grade === confidence) return record;
+  return { ...record, pair: market, confidence: grade };
 }
 
 function read(): AnalysisRecord[] {

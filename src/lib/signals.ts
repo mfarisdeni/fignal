@@ -6,6 +6,7 @@ import {
 } from "@/lib/i18n";
 import {
   CONFIDENCE_ORDER,
+  MARKETS,
   confidenceRank,
   type Confidence,
   type HistoricalSignal,
@@ -63,6 +64,41 @@ const DONE_STATUSES: SignalStatus[] = [
 
 export function isLiveStatus(status: TradingSignal["status"]): boolean {
   return LIVE_STATUSES.includes(status as SignalStatus);
+}
+
+/**
+ * The markets worth offering as a filter, taken from what the feed actually
+ * holds rather than from the registry.
+ *
+ * A pill for a market with nothing behind it is a dead end: the member taps it,
+ * sees an empty card, and concludes the app is broken. So the row only ever
+ * lists markets that have a signal, and MARKETS decides the order — the four
+ * the desk covers first, anything else the parser picked up after them. A new
+ * pair therefore appears on its own, from a pasted prompt, with no UI change.
+ *
+ * Derived from every signal rather than only the live ones, so narrowing to
+ * completed setups can never leave the filter pointing at a market that has
+ * just been filtered out of the row.
+ */
+export function availableMarkets(signals: TradingSignal[]): Market[] {
+  const present = new Set(signals.map((signal) => signal.pair));
+  return MARKETS.filter((market) => present.has(market));
+}
+
+/**
+ * The market filter the dashboard should actually apply.
+ *
+ * A remembered selection can outlive its market — that was the last signal and
+ * it was deleted, or the desk has published nothing since. Honouring it would
+ * put an un-clearable filter over an empty feed, so an unavailable market reads
+ * as All. The stored choice is left alone, so the member's pick comes back if
+ * that market ever does.
+ */
+export function resolveMarketFilter(
+  markets: Market[],
+  selected: Market | "ALL",
+): Market | "ALL" {
+  return selected !== "ALL" && !markets.includes(selected) ? "ALL" : selected;
 }
 
 export function filterSignals(
@@ -209,16 +245,16 @@ export function summarizePerformance(
 /** Decimals per market — no unnecessary trailing precision. */
 const PAIR_DECIMALS: Record<Market, number> = {
   XAUUSD: 0,
-  XAGUSD: 2,
   EURUSD: 4,
+  US100: 0,
+  BTCUSD: 0,
+  XAGUSD: 2,
   GBPUSD: 4,
   AUDUSD: 4,
   USDCAD: 4,
   EURJPY: 3,
-  NAS100: 0,
   US30: 0,
   SPX500: 1,
-  BTCUSD: 0,
 };
 
 export function formatPrice(value: number, pair: Market): string {

@@ -1,6 +1,7 @@
 import {
   CONFIDENCE_ORDER,
   type AnalysisRecord,
+  MARKETS,
   type Confidence,
   type Market,
   type ParsedAnalysis,
@@ -327,16 +328,16 @@ function firstLine(block: LabelBlock | undefined): string | undefined {
 
 const MARKET_ALIASES: Record<Market, string[]> = {
   XAUUSD: ["xauusd", "gold", "xau"],
-  XAGUSD: ["xagusd", "silver"],
   EURUSD: ["eurusd", "eur/usd"],
+  US100: ["us100", "nas100", "us tech 100", "us 100", "ndx", "nasdaq"],
+  BTCUSD: ["btcusd", "btc/usd", "bitcoin"],
+  XAGUSD: ["xagusd", "silver"],
   GBPUSD: ["gbpusd", "gbp/usd"],
   AUDUSD: ["audusd", "aud/usd"],
   USDCAD: ["usdcad", "usd/cad"],
   EURJPY: ["eurjpy", "eur/jpy"],
-  NAS100: ["nas100", "us100", "us tech 100", "ndx", "nasdaq"],
   US30: ["us30", "dj30", "dow jones", "wall street 30"],
   SPX500: ["spx500", "spx", "s&p 500", "s&p500"],
-  BTCUSD: ["btcusd", "btc/usd", "bitcoin"],
 };
 
 /**
@@ -347,7 +348,7 @@ function detectMarket(text: string): Market | undefined {
   const lower = text.toLowerCase();
   const scopes = [lower.slice(0, 200), lower];
   for (const scope of scopes) {
-    for (const market of Object.keys(MARKET_ALIASES) as Market[]) {
+    for (const market of MARKETS) {
       const hit = MARKET_ALIASES[market].some((alias) =>
         new RegExp(`\\b${alias.replace(/[.*+?^${}()|[\]\\&]/g, "\\$&")}\\b`, "i").test(
           scope,
