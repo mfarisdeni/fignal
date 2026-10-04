@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import Link from "next/link";
 import { ArrowRight, Gem } from "lucide-react";
 import { FignalMark } from "@/components/layout/top-nav";
 import { LanguageToggle } from "@/components/layout/language-toggle";
@@ -42,7 +42,7 @@ export function Landing() {
             size="lg"
             className="mt-8 rounded-full bg-gold text-background hover:bg-gold/90"
           >
-            <Link to="/platinum">
+            <Link href="/platinum">
               {t("landing.subscribe")}
               <ArrowRight className="ml-1.5 h-4 w-4" aria-hidden="true" />
             </Link>

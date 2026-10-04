@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import Link from "next/link";
 import { ArrowLeft, Lock, ShieldCheck } from "lucide-react";
 import { AdminGate } from "@/components/admin/admin-gate";
 import { AnalysisRecordCard } from "@/components/admin/analysis-record-card";
@@ -55,7 +55,7 @@ export function AdminDashboard() {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-[1280px] items-center gap-3 px-4 sm:px-6">
-          <Link to="/platinum" aria-label="Fignal Platinum dashboard">
+          <Link href="/platinum" aria-label="Fignal Platinum dashboard">
             <FignalMark />
           </Link>
 
@@ -67,7 +67,7 @@ export function AdminDashboard() {
           <div className="ml-auto flex items-center gap-1.5">
             <LanguageToggle />
             <Button variant="ghost" size="sm" asChild className="rounded-full">
-              <Link to="/platinum">
+              <Link href="/platinum">
                 <ArrowLeft className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
                 {t("admin.memberView")}
               </Link>
