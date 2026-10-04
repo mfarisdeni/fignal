@@ -123,19 +123,42 @@ function parseLevel(block: string | undefined): number | undefined {
 /**
  * Targets: prefer explicitly numbered "TP1:" / "TP2:" lines, otherwise fall
  * back to the first two prices in the block in the order they appear.
+ *
+ * The label itself is the authority on which target is which. "Take Profit 2
+ * (TP2): 84,900" is TP2 even when it is the only target stated, and reading it
+ * as TP1 would publish the analyst's second target as their first — a level
+ * that looks actionable and is not.
  */
-function parseTargets(block: string | undefined): { tp1?: number; tp2?: number } {
-  if (!block) return {};
+function parseTargets(blocks: LabelBlock[]): { tp1?: number; tp2?: number } {
   const numbered = (n: number) => {
-    const found = new RegExp(
+    const direct = blocks.find(
+      (block) => block.key === `tp${n}` || block.key === `takeprofit${n}`,
+    );
+    if (direct) return parseLevel(direct.text);
+
+    // A number written inside the value instead of the label: "TP1 = 2,400".
+    const loose = new RegExp(
       `TP\\s*${n}[^\\d]{0,12}(\\d[\\d,]*(?:\\.\\d+)?)`,
       "i",
-    ).exec(block);
-    return found ? Number(found[1].replace(/,/g, "")) : undefined;
+    );
+    for (const block of blocks) {
+      if (!TP_LABELS.includes(block.key)) continue;
+      const found = loose.exec(block.text);
+      if (found) return Number(found[1].replace(/,/g, ""));
+    }
+    return undefined;
   };
-  const levels = priceTokens(block).map((token) => token.value);
-  const tp1 = numbered(1) ?? levels[0];
-  const tp2 = numbered(2) ?? (tp1 == null ? levels[1] : levels.find((l) => l !== tp1));
+
+  const bulk = joinLabels(blocks, TP_LABELS);
+  const levels = bulk ? priceTokens(bulk).map((token) => token.value) : [];
+  const second = numbered(2);
+
+  // A lone TP2 must not be promoted to TP1 by the first-price fallback: that
+  // would dress the analyst's second target up as the first one to take.
+  const secondOnly =
+    second != null && numbered(1) == null;
+  const tp1 = secondOnly ? undefined : (numbered(1) ?? levels[0]);
+  const tp2 = second ?? (tp1 == null ? levels[1] : levels.find((l) => l !== tp1));
   return { tp1, tp2 };
 }
 
@@ -286,8 +309,38 @@ const ENTRY_LABELS = [
   "entrytrigger",
   "entryidealzone",
 ];
+
+/**
+ * Checked before ENTRY_LABELS. A qualifier in brackets is dropped when a label
+ * is keyed, so "Entry (Avg)" and "Entry Zone" both reduce to a plain entry and
+ * the alias order hands the win to whichever matched the shorter alias. A stated
+ * zone is the actionable area and beats a single price, which is usually the
+ * midpoint of that same zone.
+ */
+const ENTRY_ZONE_LABELS = [
+  "entryzone",
+  "entryarea",
+  "entrylevels",
+  "entrylevel",
+  "entryidealzone",
+];
+
 const SL_LABELS = ["sl", "stoploss", "stoplosslevel", "sl1"];
-const TP_LABELS = ["tp", "tp1", "tp2", "tp3", "targets", "target", "takeprofit"];
+const TP_LABELS = [
+  "tp",
+  "tp1",
+  "tp2",
+  "tp3",
+  "targets",
+  "target",
+  "takeprofit",
+  // "Take Profit 1 (TP1):" keys as "takeprofit1" once the bracket is dropped.
+  // Without these the numbered targets are invisible and the whole block falls
+  // through to the prose fallback, which can only ever recover one number.
+  "takeprofit1",
+  "takeprofit2",
+  "takeprofit3",
+];
 const RR_LABELS = ["riskreward", "rr", "riskrewardratio"];
 const GRADE_LABELS = ["grade", "confidencegrade", "confidence", "rating"];
 const REASON_LABELS = ["reason", "rationale", "reasoning"];
@@ -389,6 +442,50 @@ const NEGATED_SIDE =
   /\b(?:DO NOT|DON'T|DOESN'T|NEVER|NO|AVOID)\s+(?:SHORT|SELL|BUY|LONG|CHASE)\b/g;
 
 /**
+ * A heading that dismisses the trade is not naming a side: "NO TRADE — WAITING",
+ * "NO BIAS TODAY". Read as a call it would be the opposite of what it says.
+ */
+const HEADING_DISMISS =
+  /\b(NO[\s-]?TRADE|NO[\s-]?ENTRY|NO[\s-]?SETUP|NO[\s-]?CHASE|NO[\s-]?BIAS|STAND[\s-]?ASIDE)\b/i;
+
+/**
+ * The side named by a heading, when that is where the analyst put it.
+ *
+ * Many desk prompts state the call in the section title and nowhere else —
+ * "🟢 BUY SETUP (SNIPER)", "SELL BIAS", "🔴 SELL SIGNAL". Headings are
+ * decoration to the label scanner, so without this a perfectly clear setup reads
+ * as a no-trade and the whole plan is published with nothing to act on.
+ *
+ * Only a side that survives having its negations stripped counts, so "DO NOT BUY
+ * HERE" names no side rather than naming a long.
+ */
+function headingSide(text: string): SignalDirection | null {
+  const heading = headingDecision(text);
+  return heading
+    ? directionFromBias(heading.toUpperCase().replace(NEGATED_SIDE, " "))
+    : null;
+}
+
+/** The heading itself, kept for display: it is the analyst's own wording. */
+function headingDecision(text: string): string | undefined {
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (!isHeading(trimmed) || HEADING_DISMISS.test(trimmed)) continue;
+    if (directionFromBias(trimmed.toUpperCase().replace(NEGATED_SIDE, " ")))
+      return trimmed;
+  }
+  return undefined;
+}
+
+/**
+ * A plan that hands over a trigger instead of an instruction to act now. The
+ * levels are published and the side is kept, so the member gets "WAIT" on a buy
+ * rather than an entry they were told not to take.
+ */
+const AWAITS_TRIGGER =
+  /\b(WAIT\s+(?:FOR|UNTIL)|DO NOT ENTER|DON'T ENTER|DO NOT CHASE|NO[\s-]?CHASE|NO[\s-]?ENTRY|NO ENTRY|MUST CONFIRM|UNTIL\s+(?:THE\s+)?(?:SWEEP|RECLAIM|TRIGGER|CONFIRMATION|RETEST))\b/i;
+
+/**
  * The decision drives the call; the timeframe bias, then the stated
  * preference, supplies the side. Decisions are read sentence by sentence, so
  * "wait for the low — do not short the middle" resolves to a wait on the long
@@ -400,6 +497,7 @@ function detectCall(
   decision: string | undefined,
   bias: string | undefined,
   hint: SignalDirection | null,
+  trigger?: string,
 ): { call: TradeCall; direction: SignalDirection | "NO_TRADE" } {
   const biasText = (bias ?? "").toUpperCase();
   const side = directionFromBias(biasText) ?? hint;
@@ -417,7 +515,14 @@ function detectCall(
       return { call: "WAIT", direction: side ?? "NO_TRADE" };
   }
 
-  if (side) return { call: "ENTER", direction: side };
+  if (side) {
+    // No decision line, but the side is known. A sniper plan hands over a
+    // trigger to wait for, and that is a wait on the side — not an entry, and
+    // not a no-trade, because the levels behind it are real and published.
+    if (trigger && AWAITS_TRIGGER.test(trigger))
+      return { call: "WAIT", direction: side };
+    return { call: "ENTER", direction: side };
+  }
   return { call: "NO_TRADE", direction: "NO_TRADE" };
 }
 
@@ -512,24 +617,40 @@ export function parseAnalysis(raw: string): ParsedAnalysis {
   const blocks = labelBlocks(text);
 
   const bias = pickLabel(blocks, BIAS_LABELS);
-  const decision = pickLabel(blocks, DECISION_LABELS)?.text;
+  const labelledDecision = pickLabel(blocks, DECISION_LABELS)?.text;
   const grade = pickLabel(blocks, GRADE_LABELS);
 
   const market = detectMarket(text);
+
+  const sniperBlock =
+    firstLine(pickLabel(blocks, SNIPER_LABELS)) ??
+    sectionBody(text, "SNIPER INSTRUCTION");
+
+  /* The call comes from a decision line when there is one. Failing that the
+     side can still be read off a heading, and a trigger that asks to be waited
+     for makes it a wait rather than an entry. */
   const { call, direction } = detectCall(
-    decision,
+    labelledDecision,
     firstLine(bias),
-    preferredSide(text),
+    preferredSide(text) ?? headingSide(text),
+    sniperBlock ?? sectionBody(text, "TRIGGER"),
   );
   const confidence = detectConfidence(blocks, text);
 
-  const entryBlock = pickLabel(blocks, ENTRY_LABELS)?.text;
+  /* The heading a decision-less prompt is shown under, so the card can still
+     quote the analyst's own wording for the call it made. */
+  const decision = labelledDecision ?? headingDecision(text);
+
+  const entryBlock =
+    pickLabel(blocks, ENTRY_ZONE_LABELS)?.text ??
+    pickLabel(blocks, ENTRY_LABELS)?.text;
   const slBlock = pickLabel(blocks, SL_LABELS)?.text;
-  const tpBlock = joinLabels(blocks, TP_LABELS);
 
   const entry = entryBlock ? parseEntryZone(entryBlock) : proseEntry(text);
   const sl = slBlock ? parseLevel(slBlock) : proseLevel(text, SL_CUE);
-  const { tp1, tp2 } = tpBlock ? parseTargets(tpBlock) : { tp1: proseLevel(text, TP_CUE) };
+  const { tp1, tp2 } = joinLabels(blocks, TP_LABELS)
+    ? parseTargets(blocks)
+    : { tp1: proseLevel(text, TP_CUE), tp2: undefined };
 
   const missing: string[] = [];
   if (!market) missing.push("pair");
@@ -552,9 +673,7 @@ export function parseAnalysis(raw: string): ParsedAnalysis {
     // the trailing reasoning behind it is not what a badge should show.
     decision: sentences(decision ?? "")[0],
     riskReward: firstLine(pickLabel(blocks, RR_LABELS)),
-    sniper:
-      firstLine(pickLabel(blocks, SNIPER_LABELS)) ??
-      sectionBody(text, "SNIPER INSTRUCTION"),
+    sniper: sniperBlock,
     invalidation:
       firstLine(pickLabel(blocks, ["invalidation", "invalidatedif"])) ??
       sectionBody(text, "INVALIDATION"),
