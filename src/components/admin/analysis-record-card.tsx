@@ -121,7 +121,7 @@ export function AnalysisRecordCard({
           <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           Not stated in the prompt:{" "}
           {record.missing.map((field) => MISSING_LABEL[field] ?? field).join(", ")}.
-          Members will see a dash.
+          Left blank on the member card rather than guessed.
         </p>
       )}
 

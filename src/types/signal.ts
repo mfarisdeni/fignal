@@ -1,8 +1,19 @@
-export type Confidence = "A+" | "A" | "B+" | "B" | "C";
+export type Confidence = "A+" | "A" | "A-" | "B+" | "B" | "B-" | "C";
 
 export type SignalDirection = "BUY" | "SELL";
 
-export type Market = "XAUUSD" | "EURUSD" | "NAS100" | "BTCUSD";
+export type Market =
+  | "XAUUSD"
+  | "XAGUSD"
+  | "EURUSD"
+  | "GBPUSD"
+  | "AUDUSD"
+  | "USDCAD"
+  | "EURJPY"
+  | "NAS100"
+  | "US30"
+  | "SPX500"
+  | "BTCUSD";
 
 export type SignalStatus =
   | "UPCOMING"
@@ -84,16 +95,38 @@ export type HistoricalSignal = {
 
 /** Deterministic confidence ranking — the single source of truth for ordering. */
 export const confidenceRank: Record<Confidence, number> = {
-  "A+": 5,
-  A: 4,
-  "B+": 3,
-  B: 2,
+  "A+": 7,
+  A: 6,
+  "A-": 5,
+  "B+": 4,
+  B: 3,
+  "B-": 2,
   C: 1,
 };
 
-export const CONFIDENCE_ORDER: Confidence[] = ["A+", "A", "B+", "B", "C"];
+export const CONFIDENCE_ORDER: Confidence[] = [
+  "A+",
+  "A",
+  "A-",
+  "B+",
+  "B",
+  "B-",
+  "C",
+];
 
-export const MARKETS: Market[] = ["XAUUSD", "EURUSD", "NAS100", "BTCUSD"];
+export const MARKETS: Market[] = [
+  "XAUUSD",
+  "XAGUSD",
+  "EURUSD",
+  "GBPUSD",
+  "AUDUSD",
+  "USDCAD",
+  "EURJPY",
+  "NAS100",
+  "US30",
+  "SPX500",
+  "BTCUSD",
+];
 
 /** Every status an admin-published signal can be moved to. */
 export const SIGNAL_STATUSES: SignalStatus[] = [

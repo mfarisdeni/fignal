@@ -171,8 +171,15 @@ export function summarizePerformance(
 /** Decimals per market — no unnecessary trailing precision. */
 const PAIR_DECIMALS: Record<Market, number> = {
   XAUUSD: 0,
+  XAGUSD: 2,
   EURUSD: 4,
+  GBPUSD: 4,
+  AUDUSD: 4,
+  USDCAD: 4,
+  EURJPY: 3,
   NAS100: 0,
+  US30: 0,
+  SPX500: 1,
   BTCUSD: 0,
 };
 
@@ -253,8 +260,10 @@ export const STATUS_LABEL: Record<TradingSignal["status"], string> = {
 export const CONFIDENCE_DESCRIPTION: Record<Confidence, string> = {
   "A+": "Highest confidence",
   A: "High confidence",
+  "A-": "High confidence",
   "B+": "Moderate-high confidence",
   B: "Moderate confidence",
+  "B-": "Moderate confidence",
   C: "Lower confidence",
 };
 
@@ -262,7 +271,9 @@ export const CONFIDENCE_DESCRIPTION: Record<Confidence, string> = {
 export const CONFIDENCE_TEXT: Record<Confidence, string> = {
   "A+": "text-conf-aplus",
   A: "text-conf-a",
+  "A-": "text-conf-a",
   "B+": "text-conf-bplus",
   B: "text-conf-b",
+  "B-": "text-conf-b",
   C: "text-conf-c",
 };
