@@ -25,22 +25,20 @@ const STORAGE_KEY = "fignal-admin-analysis";
 export const SIGNALS_UPDATED_EVENT = "fignal:signals-updated";
 
 /**
- * Market names published before the registry was renamed, mapped to the current
- * spelling. Keyed as plain strings on purpose: "NAS100" is no longer a Market, so
- * a typed key here would make the one name we still have to accept impossible
- * to write down.
+ * Alternate spellings of a market, mapped to the canonical name. Keyed as plain
+ * strings on purpose: "US100" is not a Market, so a typed key here would make
+ * the one spelling we still have to accept impossible to write down.
  */
-const LEGACY_MARKETS: Record<string, Market> = { NAS100: "US100" };
+const LEGACY_MARKETS: Record<string, Market> = { US100: "NAS100" };
 
 /**
  * Grades outside the current scale are dropped rather than trusted: an
  * analysis stored before the scale was trimmed to A+/A/B+/B has to read as
  * ungraded, not as a badge the UI cannot render.
  *
- * Markets are migrated rather than dropped. The index used to be published as
- * NAS100 and is now US100 — the same instrument under the name members
- * actually trade it by, and the one this desk lists — so records written
- * earlier must not silently disappear from the feed.
+ * Markets are migrated rather than dropped. NAS100 is the canonical name, but
+ * a record can carry the US100 spelling from a build that published it, and
+ * losing that record to a rename would empty the desk without a word.
  */
 function normalize(record: AnalysisRecord): AnalysisRecord {
   const { confidence, pair } = record;

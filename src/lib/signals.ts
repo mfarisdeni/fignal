@@ -246,7 +246,7 @@ export function summarizePerformance(
 const PAIR_DECIMALS: Record<Market, number> = {
   XAUUSD: 0,
   EURUSD: 4,
-  US100: 0,
+  NAS100: 0,
   BTCUSD: 0,
   XAGUSD: 2,
   GBPUSD: 4,

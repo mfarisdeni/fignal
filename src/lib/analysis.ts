@@ -329,7 +329,7 @@ function firstLine(block: LabelBlock | undefined): string | undefined {
 const MARKET_ALIASES: Record<Market, string[]> = {
   XAUUSD: ["xauusd", "gold", "xau"],
   EURUSD: ["eurusd", "eur/usd"],
-  US100: ["us100", "nas100", "us tech 100", "us 100", "ndx", "nasdaq"],
+  NAS100: ["nas100", "us100", "us tech 100", "us 100", "ndx", "nasdaq"],
   BTCUSD: ["btcusd", "btc/usd", "bitcoin"],
   XAGUSD: ["xagusd", "silver"],
   GBPUSD: ["gbpusd", "gbp/usd"],

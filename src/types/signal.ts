@@ -17,7 +17,7 @@ export type SignalDirection = "BUY" | "SELL";
 export type Market =
   | "XAUUSD"
   | "EURUSD"
-  | "US100"
+  | "NAS100"
   | "BTCUSD"
   | "XAGUSD"
   | "GBPUSD"
@@ -129,7 +129,7 @@ export const CONFIDENCE_ORDER: Confidence[] = ["A+", "A", "B+", "B"];
 export const MARKETS: Market[] = [
   "XAUUSD",
   "EURUSD",
-  "US100",
+  "NAS100",
   "BTCUSD",
   "XAGUSD",
   "GBPUSD",
