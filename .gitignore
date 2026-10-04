@@ -36,3 +36,11 @@ next-env.d.ts
 *-firebase-adminsdk-*.json
 *.tsbuildinfo
 next-env.d.ts
+
+# Payment provider credentials - never commit
+klikqris.txt
+*.pem
+klikqris-*.json
+
+# Build/deploy bundles that embed .env.local and the service-account key.
+*.zip

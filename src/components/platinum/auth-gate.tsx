@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
 import { FignalMark } from "@/components/layout/top-nav";
+import { PaymentPanel } from "@/components/platinum/payment-panel";
 import { validatePassword, validateUsername } from "@/lib/auth/username";
 
 /**
@@ -152,9 +153,8 @@ export function AuthGate() {
                 {notice}
               </p>
             )}
-            <p className="mt-4 text-xs text-muted-foreground">
-              Payment is not wired up yet — coming next.
-            </p>
+
+            <PaymentPanel />
           </>
         ) : (
           <>

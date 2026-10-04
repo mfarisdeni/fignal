@@ -101,6 +101,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  /**
+   * Expiry has to take the screen away on its own.
+   *
+   * A membership is 7 days. Firebase only rotates the ID token hourly, so
+   * onIdTokenChanged alone would leave an expired member looking at a dashboard
+   * for up to an hour after their access lapsed. Re-reading /api/session on an
+   * interval means the gate re-evaluates against the real expiry timestamp
+   * instead of the hour-old token. 60s, and only while a tab is visible, so a
+   * backgrounded tab does not keep polling.
+   *
+   * This is convenience, not enforcement. Nothing here grants access - the
+   * server is the authority on every read and write, and Firestore Rules would
+   * reject an expired member regardless of what this screen believes.
+   */
+  useEffect(() => {
+    if (!session.uid) return;
+
+    const poll = async () => {
+      const user = session.user;
+      if (!user || document.visibilityState !== "visible") return;
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch("/api/session", {
+          headers: { authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const facts = (await response.json()) as SessionFacts;
+        setSession({ ...facts, user });
+      } catch {
+        /* transient; the next tick retries */
+      }
+    };
+
+    const interval = setInterval(() => void poll(), 60_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void poll();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [session.uid, session.user]);
+
   const signIn = useCallback(async (username: string, password: string) => {
     const response = await fetch("/api/auth/login", {
       method: "POST",

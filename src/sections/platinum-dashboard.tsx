@@ -30,7 +30,10 @@ import type { Market } from "@/types/signal";
  * where signals come from (the admin desk today, Supabase tomorrow).
  */
 export function PlatinumDashboard() {
-  const { isAuthenticated } = useAuth();
+  // hasAccess, not isAuthenticated. Signing up creates an account; it does not buy
+  // access. Only a paid membership (or the desk itself) opens this route - the
+  // gate below also serves the checkout for accounts that have not paid yet.
+  const { hasAccess } = useAuth();
   const { signals, history, loading, updatedAt } = useSignals();
   const { t } = useLanguage();
 
@@ -59,7 +62,7 @@ const summary = useMemo(() => summarizeDay(signals), [signals]);
     };
   }, [signals, activeMarket, status]);
 
-  if (!isAuthenticated) return <AuthGate />;
+  if (!hasAccess) return <AuthGate />;
 
   return (
     <div className="min-h-screen bg-background">
