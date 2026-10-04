@@ -48,16 +48,19 @@ export function loadAnalyses(): AnalysisRecord[] {
 }
 
 /**
- * Parse a prompt and publish it. The signal starts as UPCOMING: the analysis
- * exists, the trade has not been taken, and the admin moves it on by hand.
+ * Parse a prompt and publish it. A trade signal starts as UPCOMING: the
+ * analysis exists, the trade has not been taken, and the admin moves it on by
+ * hand. A prompt that calls for no setup is published as NO_TRADE, so it reads
+ * as the absence of a trade rather than as a pending one.
  */
 export function submitAnalysis(raw: string): AnalysisRecord {
+  const parsed = parseAnalysis(raw);
   const record: AnalysisRecord = {
+    ...parsed,
     id: `an-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
     submittedAt: new Date().toISOString(),
     raw,
-    status: "UPCOMING",
-    ...parseAnalysis(raw),
+    status: parsed.call === "NO_TRADE" ? "NO_TRADE" : "UPCOMING",
   };
   write([record, ...read()]);
   return record;

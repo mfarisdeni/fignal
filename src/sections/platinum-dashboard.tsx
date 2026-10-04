@@ -24,7 +24,7 @@ import type { Market } from "@/types/signal";
  * Fignal Platinum dashboard — /platinum
  *
  * The page consumes structured signal objects only. It knows nothing about
- * where signals come from (mock repository today, Supabase tomorrow).
+ * where signals come from (the admin desk today, Supabase tomorrow).
  */
 export function PlatinumDashboard() {
   const { isAuthenticated } = useAuth();
@@ -37,8 +37,8 @@ export function PlatinumDashboard() {
   const summary = useMemo(() => summarizeDay(signals), [signals]);
 
   const performance = useMemo(
-    () => summarizePerformance(history, signals),
-    [history, signals],
+    () => summarizePerformance(signals),
+    [signals],
   );
 
   const { featured, rest, noTrade } = useMemo(() => {

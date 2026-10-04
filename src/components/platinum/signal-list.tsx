@@ -41,7 +41,7 @@ export function SignalList({
       return (
         <NoTradeState
           pair="BTCUSD"
-          note="No weekend setup published yet. BTC signals are released Saturday morning WIB."
+          note="No BTC setup published. Weekend analyses appear here as the desk releases them."
         />
       );
     }

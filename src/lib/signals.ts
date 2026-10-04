@@ -4,6 +4,7 @@ import {
   type Confidence,
   type HistoricalSignal,
   type Market,
+  type SignalDirection,
   type SignalStatus,
   type TradingSignal,
 } from "@/types/signal";
@@ -111,8 +112,17 @@ export type PerformanceSummary = {
   avgConfidence: Confidence | null;
 };
 
-const WIN_RESULTS = ["TP1_HIT", "TP2_HIT"];
-const LOSS_RESULTS = ["SL_HIT"];
+const WIN_RESULTS: HistoricalSignal["result"][] = ["TP1_HIT", "TP2_HIT"];
+const LOSS_RESULTS: HistoricalSignal["result"][] = ["SL_HIT"];
+
+/** Statuses that close a setup out. Expired and cancelled are closed too. */
+const CLOSED_STATUSES: HistoricalSignal["result"][] = [
+  "TP1_HIT",
+  "TP2_HIT",
+  "SL_HIT",
+  "EXPIRED",
+  "CANCELLED",
+];
 
 /** Nearest letter grade for a fractional confidence rank. */
 function rankToConfidence(rank: number): Confidence {
@@ -124,34 +134,56 @@ function rankToConfidence(rank: number): Confidence {
 }
 
 /**
- * Track record derived from closed setups: the historical feed plus any of
- * today's signals that already closed. Expired and cancelled setups are
- * excluded — they say nothing about whether the analysis was right.
+ * Completed setups, newest first.
+ *
+ * The desk keeps every signal in one place, so history is a view over the
+ * published feed rather than a second list that could disagree with it. A
+ * no-trade record is not a closed trade and never appears here.
+ */
+export function closedHistory(signals: TradingSignal[]): HistoricalSignal[] {
+  return signals
+    .filter(
+      (s) =>
+        s.direction !== "NO_TRADE" &&
+        CLOSED_STATUSES.includes(s.status as HistoricalSignal["result"]),
+    )
+    .map((s) => ({
+      id: s.id,
+      pair: s.pair,
+      direction: s.direction as SignalDirection,
+      confidence: s.confidence,
+      result: s.status as HistoricalSignal["result"],
+      closedAt: s.generatedAt,
+    }))
+    .sort(
+      (a, b) =>
+        new Date(b.closedAt).getTime() - new Date(a.closedAt).getTime(),
+    );
+}
+
+/**
+ * Track record of the live desk: win rate from the setups that have actually
+ * resolved, average grade from everything published.
+ *
+ * Expired and cancelled setups are left out of the win rate — they say nothing
+ * about whether the analysis was right — but they are not a win either. No
+ * setup is counted twice: the closed ones are read straight off the feed.
  */
 export function summarizePerformance(
-  history: HistoricalSignal[],
   signals: TradingSignal[],
 ): PerformanceSummary {
-  const closed: { confidence?: Confidence; result: string }[] = [
-    ...history.map((h) => ({ confidence: h.confidence, result: h.result })),
-    ...signals
-      .filter((s) => DONE_STATUSES.includes(s.status as SignalStatus))
-      .map((s) => ({ confidence: s.confidence, result: s.status })),
-  ];
-
+  const closed = closedHistory(signals);
   const resolved = closed.filter(
     (c) =>
-      WIN_RESULTS.includes(c.result) ||
-      LOSS_RESULTS.includes(c.result),
+      WIN_RESULTS.includes(c.result) || LOSS_RESULTS.includes(c.result),
   );
   const wins = resolved.filter((c) => WIN_RESULTS.includes(c.result)).length;
 
-  const graded = closed.filter(
-    (c): c is { confidence: Confidence; result: string } =>
-      c.confidence != null,
+  const graded = signals.filter(
+    (s) => s.status !== "NO_TRADE" && s.confidence != null,
   );
   const avgRank = graded.length
-    ? graded.reduce((sum, c) => sum + confidenceRank[c.confidence], 0) /
+    ? graded.reduce((sum, s) => sum + confidenceRank[s.confidence!], 0) /
       graded.length
     : 0;
 

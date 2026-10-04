@@ -79,8 +79,12 @@ export type AnalysisRecord = ParsedAnalysis & {
   submittedAt: string; // ISO 8601
   /** The prompt exactly as submitted — the source material for the summary. */
   raw: string;
-  /** Lifecycle of the published signal — the admin keeps it current by hand. */
-  status: SignalStatus;
+  /**
+   * Lifecycle of the published signal — the admin keeps it current by hand.
+   * A prompt the parser reads as "no valid setup" is published as NO_TRADE
+   * rather than as a trade waiting to be taken.
+   */
+  status: SignalStatus | "NO_TRADE";
 };
 
 /** A completed signal shown in the Recent History section. */
@@ -88,7 +92,8 @@ export type HistoricalSignal = {
   id: string;
   pair: Market;
   direction: SignalDirection;
-  confidence: Confidence;
+  /** A setup the prompt never graded still counts towards the win rate. */
+  confidence?: Confidence;
   result: "TP1_HIT" | "TP2_HIT" | "SL_HIT" | "EXPIRED" | "CANCELLED";
   closedAt: string; // ISO 8601
 };

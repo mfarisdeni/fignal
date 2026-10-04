@@ -1,26 +1,30 @@
-import { useEffect, useState } from "react";
-import { fetchHistory, fetchSignals } from "@/data/mock-signals";
+import { useEffect, useMemo, useState } from "react";
+import { fetchSignals } from "@/data/signal-repository";
 import { SIGNALS_UPDATED_EVENT } from "@/data/prompt-store";
-import type { HistoricalSignal, TradingSignal } from "@/types/signal";
+import { closedHistory } from "@/lib/signals";
+import type { TradingSignal } from "@/types/signal";
 
 /**
  * Data-fetching hook consumed by the dashboard.
- * Swapping the mock repository for Supabase only changes this hook's internals.
+ * Swapping the repository for Supabase only changes this hook's internals.
+ *
+ * History is derived from the feed rather than fetched beside it, so the two
+ * can never drift apart.
  */
 export function useSignals() {
   const [signals, setSignals] = useState<TradingSignal[]>([]);
-  const [history, setHistory] = useState<HistoricalSignal[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+
+  const history = useMemo(() => closedHistory(signals), [signals]);
 
   useEffect(() => {
     let cancelled = false;
 
     const load = () => {
-      Promise.all([fetchSignals(), fetchHistory()]).then(([s, h]) => {
+      fetchSignals().then((s) => {
         if (cancelled) return;
         setSignals(s);
-        setHistory(h);
         setUpdatedAt(new Date());
         setLoading(false);
       });

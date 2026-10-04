@@ -45,7 +45,13 @@ export function RecentHistory({
           key={h.id}
           className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 transition-colors duration-150 hover:bg-muted/40"
         >
-          <ConfidenceBadge confidence={h.confidence} size="sm" />
+          {h.confidence ? (
+            <ConfidenceBadge confidence={h.confidence} size="sm" />
+          ) : (
+            <span className="inline-flex h-5 items-center rounded-md border border-border px-1.5 text-[11px] font-medium text-muted-foreground">
+              Ungraded
+            </span>
+          )}
           <span className="text-sm font-semibold tracking-tight">{h.pair}</span>
           <DirectionBadge direction={h.direction} size="sm" />
           <span
