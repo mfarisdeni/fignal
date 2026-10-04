@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { ArrowRight, LockKeyhole, Mail } from "lucide-react";
+import { LockKeyhole, Mail } from "lucide-react";
 import { LanguageToggleFloating } from "@/components/layout/language-toggle";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -164,9 +164,36 @@ export function AuthGate() {
                 : t("auth.subtitle")}
             </p>
 
+            <div
+              role="tablist"
+              aria-label={mode === "register" ? "Account" : "Welcome"}
+              className="mt-7 grid grid-cols-2 gap-1 rounded-full border border-border bg-muted p-1"
+            >
+              {(["signIn", "register"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === tab}
+                  onClick={() => {
+                    setMode(tab);
+                    setError("");
+                    setNotice("");
+                  }}
+                  className={`rounded-full px-3 py-2 text-sm font-semibold transition-colors ${
+                    mode === tab
+                      ? "bg-background text-foreground shadow-card"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {tab === "signIn" ? t("auth.signIn") : "Register"}
+                </button>
+              ))}
+            </div>
+
             <form
               onSubmit={mode === "register" ? onRegister : onSignIn}
-              className="mt-7 space-y-3 text-left"
+              className="mt-4 space-y-3 text-left"
             >
               <label className="block space-y-1.5">
                 <span className="text-xs font-medium text-muted-foreground">
@@ -226,19 +253,7 @@ export function AuthGate() {
             </form>
 
             <div className="mt-4 flex items-center justify-between text-xs">
-              <button
-                type="button"
-                onClick={() => {
-                  setMode(mode === "register" ? "signIn" : "register");
-                  setError("");
-                  setNotice("");
-                }}
-                className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
-              >
-                {mode === "register" ? "I already have an account" : t("auth.join")}
-              </button>
-
-              {mode === "signIn" && (
+              {mode === "signIn" ? (
                 <button
                   type="button"
                   onClick={onForgotPassword}
@@ -246,15 +261,12 @@ export function AuthGate() {
                 >
                   Forgot password
                 </button>
+              ) : (
+                <span className="text-muted-foreground">
+                  Rp10.000 to activate after signup
+                </span>
               )}
             </div>
-
-            {mode === "signIn" && (
-              <p className="mt-5 flex items-center justify-center gap-1 text-xs text-muted-foreground">
-                <ArrowRight className="h-3 w-3" aria-hidden="true" />
-                Join for Rp10.000
-              </p>
-            )}
 
             <p className="mt-6 text-xs leading-relaxed text-muted-foreground">
               {t("risk.body")}
