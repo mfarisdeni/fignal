@@ -1,6 +1,6 @@
-import { Languages } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
-import { LANGUAGES, type Language } from "@/lib/i18n";
+import { Flag } from "@/components/layout/flag";
+import { LANGUAGES } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 /**
@@ -34,18 +34,18 @@ export function LanguageToggle({ className }: { className?: string }) {
             key={option.code}
             type="button"
             lang={option.code}
-            onClick={() => setLanguage(option.code as Language)}
+            onClick={() => setLanguage(option.code)}
             aria-pressed={active}
             aria-label={option.label}
             title={option.label}
             className={cn(
-              "flex h-8 w-9 items-center justify-center rounded-full text-[15px] leading-none transition-all duration-150",
+              "flex h-8 w-9 items-center justify-center rounded-full transition-all duration-150",
               active
                 ? "bg-foreground/10 shadow-card ring-1 ring-border"
                 : "opacity-55 hover:bg-muted/60 hover:opacity-100",
             )}
           >
-            <span aria-hidden="true">{option.flag}</span>
+            <Flag language={option.code} className="h-[15px] w-[26px]" />
           </button>
         );
       })}
@@ -63,35 +63,8 @@ export function LanguageToggleFloating({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "fixed right-4 top-4 z-20 sm:right-6 sm:top-6",
-        className,
-      )}
-    >
+    <div className={cn("fixed right-4 top-4 z-20 sm:right-6 sm:top-6", className)}>
       <LanguageToggle />
     </div>
-  );
-}
-
-/** Icon-only variant for tight bars — still a real group, still labelled. */
-export function LanguageToggleCompact({ className }: { className?: string }) {
-  const { language, setLanguage, t } = useLanguage();
-  const next: Language = language === "en" ? "id" : "en";
-  const target = LANGUAGES.find((option) => option.code === next);
-
-  return (
-    <button
-      type="button"
-      onClick={() => setLanguage(next)}
-      aria-label={t("nav.language")}
-      title={target?.label}
-      className={cn(
-        "inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card/70 text-muted-foreground backdrop-blur-md transition-colors hover:text-foreground",
-        className,
-      )}
-    >
-      <Languages className="h-4 w-4" aria-hidden="true" />
-    </button>
   );
 }

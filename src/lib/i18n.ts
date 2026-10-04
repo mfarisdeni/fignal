@@ -24,9 +24,9 @@ export const LOCALE: Record<Language, string> = {
 
 /** Flag-only switcher. The label is for assistive tech and the tooltip, never
  *  for sighted users — the flags are the interface. */
-export const LANGUAGES: { code: Language; flag: string; label: string }[] = [
-  { code: "en", flag: "🇬🇧", label: "English" },
-  { code: "id", flag: "🇮🇩", label: "Bahasa Indonesia" },
+export const LANGUAGES: { code: Language; label: string }[] = [
+  { code: "en", label: "English" },
+  { code: "id", label: "Bahasa Indonesia" },
 ];
 
 type Message = { en: string; id: string };
@@ -52,6 +52,10 @@ export const MESSAGES = {
   "header.subtitle": { en: "Today's market setups", id: "Setup pasar hari ini" },
   "header.updated": { en: "Updated {time}", id: "Diperbarui {time}" },
   "header.updating": { en: "Updating.", id: "Memuat." },
+  "header.sessionTitle": {
+    en: "The FX session currently running",
+    id: "Sesi FX yang sedang berlangsung",
+  },
   "header.activeOne": { en: "1 active signal", id: "1 sinyal aktif" },
   "header.activeMany": {
     en: "{n} active signals",
@@ -227,7 +231,6 @@ export const MESSAGES = {
     en: "Raw prompt ({n} chars)",
     id: "Prompt asli ({n} karakter)",
   },
-  "admin.noTrade": { en: "No trade", id: "Tidak ada trade" },
   "admin.ariaRecord": {
     en: "Analysis: {pair} {call}, confidence {confidence}",
     id: "Analisis: {pair} {call}, keyakinan {confidence}",
@@ -287,16 +290,11 @@ export const MESSAGES = {
   },
   "conf.B": { en: "Moderate confidence", id: "Keyakinan sedang" },
 
-  /* Trading session, from the clock in WIB */
-  "session.sydneyTokyo": {
-    en: "Sydney / Tokyo session",
-    id: "Sesi Sydney / Tokyo",
-  },
-  "session.asia": { en: "Asia session", id: "Sesi Asia" },
-  "session.londonNewYork": {
-    en: "London / New York session",
-    id: "Sesi London / New York",
-  },
+  /* The FX session running now — one name wins where sessions overlap */
+  "session.sydney": { en: "Asia – Sydney", id: "Sesi Asia – Sydney" },
+  "session.tokyo": { en: "Asia – Tokyo", id: "Sesi Asia – Tokyo" },
+  "session.london": { en: "London", id: "Sesi London" },
+  "session.newYork": { en: "New York", id: "Sesi New York" },
   "session.weekend": {
     en: "{day} · Weekend — BTC focus",
     id: "{day} · Akhir pekan — fokus BTC",

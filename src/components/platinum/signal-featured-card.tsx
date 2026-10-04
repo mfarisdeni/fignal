@@ -1,3 +1,4 @@
+import { Crown } from "lucide-react";
 import { ConfidenceBadge } from "./confidence-badge";
 import { DirectionBadge } from "./direction-badge";
 import { PriceMetric } from "./price-metric";
@@ -38,7 +39,8 @@ export function SignalFeaturedCard({
       <div className="p-5 sm:p-6">
         {/* Header row */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-gold">
+            <Crown className="h-3 w-3" aria-hidden="true" />
             {t("card.topSetup")}
           </span>
           {signal.confidence && (

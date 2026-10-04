@@ -33,6 +33,16 @@
     --info: 224 76% 42%;
     --upcoming: 28 90% 32%;
 
+    /* Brand gold — the top tier. Platinum and A+ are the same accent on
+       purpose: gold means "the best of what we offer", nothing else uses it. */
+    --gold: 43 88% 42%;
+
+    /* Confidence ladder, cool to warm: indigo, violet, amber, gold.
+       B stays muted on purpose — it is the baseline, not a signal. */
+    --conf-b: 215 14% 40%;
+    --conf-bplus: 258 58% 46%;
+    --conf-a: 24 84% 40%;
+
     /* Elevation */
     --shadow-color: 0 0% 10%;
   }
@@ -63,6 +73,12 @@
     --active: 158 64% 55%;
     --info: 213 94% 70%;
     --upcoming: 43 96% 60%;
+
+    --gold: 44 88% 60%;
+
+    --conf-b: 215 18% 68%;
+    --conf-bplus: 258 72% 74%;
+    --conf-a: 30 90% 62%;
 
     --shadow-color: 0 0% 0%;
   }

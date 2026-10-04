@@ -130,7 +130,7 @@ export function TopNav({
           <FignalMark />
         </a>
 
-        <span className="hidden items-center gap-1 rounded-full border border-conf-aplus/30 bg-conf-aplus/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-conf-aplus sm:inline-flex">
+        <span className="hidden items-center gap-1 rounded-full border border-gold/40 bg-gold/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-gold sm:inline-flex">
           <Gem className="h-3 w-3" aria-hidden="true" />
           Platinum
         </span>
@@ -190,7 +190,7 @@ export function TopNav({
                   {t("nav.history")}
                 </button>
                 <div className="mt-3 border-t border-border pt-3">
-                  <span className="inline-flex items-center gap-1 rounded-full border border-conf-aplus/30 bg-conf-aplus/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-conf-aplus">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-gold/40 bg-gold/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-gold">
                     <Gem className="h-3 w-3" aria-hidden="true" />
                     {t("nav.member")}
                   </span>

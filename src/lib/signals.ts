@@ -261,7 +261,14 @@ export function formatDateShort(
   }).format(new Date(iso));
 }
 
-/** e.g. "Friday · London / New York session" */
+/**
+ * Which FX session is running right now.
+ *
+ * Sessions overlap, so one name has to win and it is not arbitrary: New York
+ * beats London, London beats Tokyo, Tokyo beats Sydney. Each block below is
+ * the WIB hour range where that session is the dominant one — New York spans
+ * midnight, hence the wrap.
+ */
 export function sessionLabel(
   language: Language = DEFAULT_LANGUAGE,
   now = new Date(),
@@ -277,13 +284,18 @@ export function sessionLabel(
       timeZone: WIB,
     }).format(now),
   );
-  const isWeekend = day === "Saturday" || day === "Sunday";
 
-  if (isWeekend) return translate(language, "session.weekend", { day });
-  if (hour >= 6 && hour < 14) return translate(language, "session.asia");
-  if (hour >= 14 && hour < 22)
-    return translate(language, "session.londonNewYork");
-  return translate(language, "session.sydneyTokyo");
+  // Weekday as a number, not a name: "Saturday" is "Sabtu" in Indonesian, and
+  // comparing the translated name would quietly skip the weekend there. WIB is
+  // a flat +7 with no daylight saving, so shifting is exact.
+  const wibDay = new Date(now.getTime() + 7 * 60 * 60 * 1000).getUTCDay();
+  if (wibDay === 0 || wibDay === 6)
+    return translate(language, "session.weekend", { day });
+
+  if (hour >= 23 || hour < 4) return translate(language, "session.newYork");
+  if (hour < 7) return translate(language, "session.sydney");
+  if (hour < 14) return translate(language, "session.tokyo");
+  return translate(language, "session.london");
 }
 
 /* ------------------------------------------------------------------ */

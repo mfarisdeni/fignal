@@ -53,11 +53,12 @@ module.exports = {
         live: "hsl(var(--active) / <alpha-value>)",
         info: "hsl(var(--info) / <alpha-value>)",
         upcoming: "hsl(var(--upcoming) / <alpha-value>)",
-        "conf-aplus": "hsl(var(--conf-aplus) / <alpha-value>)",
+        gold: "hsl(var(--gold) / <alpha-value>)",
+        /* A+ is the gold accent; B/A/B+ walk the ladder up to it */
+        "conf-aplus": "hsl(var(--gold) / <alpha-value>)",
         "conf-a": "hsl(var(--conf-a) / <alpha-value>)",
         "conf-bplus": "hsl(var(--conf-bplus) / <alpha-value>)",
         "conf-b": "hsl(var(--conf-b) / <alpha-value>)",
-        "conf-c": "hsl(var(--conf-c) / <alpha-value>)",
       },
       fontFamily: {
         sans: [
