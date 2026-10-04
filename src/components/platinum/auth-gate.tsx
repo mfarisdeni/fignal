@@ -23,7 +23,7 @@ import { validatePassword, validateUsername } from "@/lib/auth/username";
 type Mode = "signIn" | "register" | "pending";
 
 export function AuthGate() {
-  const { signIn, session, isAuthenticated } = useAuth();
+  const { signIn, session, isAuthenticated, configError } = useAuth();
   const { t } = useLanguage();
 
   // A member account with no entitlement is not an error - it is the normal
@@ -121,6 +121,21 @@ export function AuthGate() {
         <div className="flex justify-center">
           <FignalMark />
         </div>
+
+        {configError && (
+          <div
+            role="alert"
+            className="mt-6 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-left"
+          >
+            <p className="text-xs font-semibold text-destructive">
+              This deployment is not configured
+            </p>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+              Sign-in cannot work here: {configError}. These are inlined when the
+              site is built, so add them on the host and redeploy.
+            </p>
+          </div>
+        )}
 
         <div className="mx-auto mt-8 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card shadow-card">
           {mode === "pending" ? (

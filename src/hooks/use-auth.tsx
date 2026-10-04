@@ -13,6 +13,7 @@ import {
   onIdTokenChanged,
   signInWithCustomToken,
   signOut as firebaseSignOut,
+  type Auth,
   type User,
 } from "firebase/auth";
 import { firebaseAuth } from "@/lib/firebase/client";
@@ -46,6 +47,11 @@ type AuthContextValue = {
   session: Session;
   /** Resolves once the initial token check has settled. */
   ready: boolean;
+  /**
+   * Non-null when this build is missing the NEXT_PUBLIC Firebase config, i.e.
+   * sign-in cannot work here at all. Null on a healthy deployment.
+   */
+  configError: string | null;
   signIn: (username: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   /** Re-mint the ID token so a newly granted claim is picked up immediately. */
@@ -67,9 +73,33 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session>(SIGNED_OUT);
   const [ready, setReady] = useState(false);
+  /**
+   * Set when this build has no usable Firebase config, so gated routes can say
+   * "the deployment is missing env vars" instead of offering a sign-in form
+   * that cannot possibly work.
+   */
+  const [configError, setConfigError] = useState<string | null>(null);
 
   useEffect(() => {
-    const auth = firebaseAuth();
+    let auth: Auth;
+
+    // firebaseAuth() throws when the NEXT_PUBLIC config is absent from this
+    // build. That used to happen outside any try/catch, and because
+    // AuthProvider sits above every route it took the landing page down too -
+    // one missing env var rendered the whole site as "this page could not load".
+    // Failing into a known state keeps the public pages readable and lets the
+    // gated ones say what is actually wrong.
+    try {
+      auth = firebaseAuth();
+    } catch (caught) {
+      setConfigError(
+        caught instanceof Error ? caught.message : "Firebase is not configured.",
+      );
+      setSession(SIGNED_OUT);
+      setReady(true);
+      return;
+    }
+
     let cancelled = false;
 
     const unsubscribe = onIdTokenChanged(auth, async (user) => {
@@ -199,11 +229,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       username: session.username,
       session,
       ready,
+      configError,
       signIn,
       signOut,
       refreshClaims,
     }),
-    [session, ready, signIn, signOut, refreshClaims],
+    [session, ready, configError, signIn, signOut, refreshClaims],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -29,11 +29,30 @@ let cached: FirebaseClient | null = null;
 function required(name: string): string {
   const value = process.env[name];
   if (!value) {
-    throw new Error(
-      `Missing ${name}. Copy .env.example to .env.local and fill it in.`,
-    );
+    throw new Error(`Missing ${name}.`);
   }
   return value;
+}
+
+/**
+ * Whether the public Firebase config made it into this build.
+ *
+ * NEXT_PUBLIC_* values are inlined at build time, not read at request time, so
+ * adding them on the host after a build changes nothing until the next
+ * deployment. That makes "env var set but blank page" a recurring failure, and
+ * it should be diagnosable rather than a white screen: check this to tell a
+ * missing-config deployment apart from a broken one.
+ */
+export function firebaseConfigMissing(): string | null {
+  const names = [
+    "NEXT_PUBLIC_FIREBASE_API_KEY",
+    "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
+    "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+    "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
+    "NEXT_PUBLIC_FIREBASE_APP_ID",
+  ];
+  const absent = names.filter((name) => !process.env[name]);
+  return absent.length ? `Missing ${absent.join(", ")}` : null;
 }
 
 export function firebaseClient(): FirebaseClient {
