@@ -1,7 +1,8 @@
+import { publishedSignals } from "@/data/prompt-store";
 import type { HistoricalSignal, TradingSignal } from "@/types/signal";
 
 /**
- * Mock signal repository.
+ * Signal repository.
  *
  * This module is the ONLY place that knows where signal data comes from.
  * The UI consumes `TradingSignal` objects through `lib/signals.ts`, so this
@@ -10,6 +11,8 @@ import type { HistoricalSignal, TradingSignal } from "@/types/signal";
  *
  *   Supabase → signal repository → signal components
  *
+ * Prompts published from /admin are read from the prompt store and lead the
+ * feed; the mock records below only stand in for the rest of the day's book.
  * Timestamps are anchored to "now" so the dashboard always looks fresh.
  */
 
@@ -210,7 +213,10 @@ export const mockHistory: HistoricalSignal[] = [
 /** Simulated latency so loading skeletons are exercised like a real feed. */
 export function fetchSignals(): Promise<TradingSignal[]> {
   return new Promise((resolve) =>
-    setTimeout(() => resolve(mockSignals), 900),
+    // Admin-published signals lead the feed — they are the live desk output,
+    // the mock records below are only the placeholder that stands in for the
+    // rest of the day's book until the real feed is connected.
+    setTimeout(() => resolve([...publishedSignals(), ...mockSignals]), 900),
   );
 }
 

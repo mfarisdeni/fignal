@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchHistory, fetchSignals } from "@/data/mock-signals";
+import { SIGNALS_UPDATED_EVENT } from "@/data/prompt-store";
 import type { HistoricalSignal, TradingSignal } from "@/types/signal";
 
 /**
@@ -14,16 +15,26 @@ export function useSignals() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    Promise.all([fetchSignals(), fetchHistory()]).then(([s, h]) => {
-      if (cancelled) return;
-      setSignals(s);
-      setHistory(h);
-      setUpdatedAt(new Date());
-      setLoading(false);
-    });
+
+    const load = () => {
+      Promise.all([fetchSignals(), fetchHistory()]).then(([s, h]) => {
+        if (cancelled) return;
+        setSignals(s);
+        setHistory(h);
+        setUpdatedAt(new Date());
+        setLoading(false);
+      });
+    };
+
+    load();
+
+    // An admin publishing from /admin writes to the signal store from another
+    // route; refetch on that event so this feed is never stale.
+    window.addEventListener(SIGNALS_UPDATED_EVENT, load);
+
     return () => {
       cancelled = true;
+      window.removeEventListener(SIGNALS_UPDATED_EVENT, load);
     };
   }, []);
 

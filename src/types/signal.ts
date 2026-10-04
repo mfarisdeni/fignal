@@ -31,6 +31,47 @@ export type TradingSignal = {
   note?: string;
 };
 
+/**
+ * What the analysis asked the desk to do right now.
+ * WAIT still carries a full plan (entry / SL / TP) — it just waits for a trigger.
+ */
+export type TradeCall = "ENTER" | "WAIT" | "NO_TRADE";
+
+/**
+ * Everything the parser could pull out of a raw market-analysis prompt.
+ * Fields the prompt does not state stay undefined and are named in `missing`,
+ * so a gap is always visible to the admin instead of being guessed.
+ */
+export type ParsedAnalysis = {
+  pair: Market;
+  call: TradeCall;
+  direction: SignalDirection | "NO_TRADE";
+  confidence?: Confidence;
+  entryMin?: number;
+  entryMax?: number;
+  sl?: number;
+  tp1?: number;
+  tp2?: number;
+  /** Verbatim decision line, e.g. "WAIT (NO CHASE)". */
+  decision?: string;
+  riskReward?: string;
+  /** The trigger the analyst wants before entering. */
+  sniper?: string;
+  invalidation?: string;
+  reason?: string;
+  missing: string[];
+};
+
+/** A prompt submitted through /admin, plus the summary extracted from it. */
+export type AnalysisRecord = ParsedAnalysis & {
+  id: string;
+  submittedAt: string; // ISO 8601
+  /** The prompt exactly as submitted — the source material for the summary. */
+  raw: string;
+  /** Lifecycle of the published signal — the admin keeps it current by hand. */
+  status: SignalStatus;
+};
+
 /** A completed signal shown in the Recent History section. */
 export type HistoricalSignal = {
   id: string;
@@ -53,3 +94,15 @@ export const confidenceRank: Record<Confidence, number> = {
 export const CONFIDENCE_ORDER: Confidence[] = ["A+", "A", "B+", "B", "C"];
 
 export const MARKETS: Market[] = ["XAUUSD", "EURUSD", "NAS100", "BTCUSD"];
+
+/** Every status an admin-published signal can be moved to. */
+export const SIGNAL_STATUSES: SignalStatus[] = [
+  "UPCOMING",
+  "ACTIVE",
+  "ENTRY_HIT",
+  "TP1_HIT",
+  "TP2_HIT",
+  "SL_HIT",
+  "EXPIRED",
+  "CANCELLED",
+];
