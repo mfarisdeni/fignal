@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { AppProviders } from "@/components/providers/app-providers";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const description = "Fignal Platinum — curated trading signals for members.";
@@ -51,6 +53,8 @@ export default function RootLayout({
       </head>
       <body className="bg-background text-foreground antialiased">
         <AppProviders>{children}</AppProviders>
+        <Toaster />
+        <Analytics />
       </body>
     </html>
   );

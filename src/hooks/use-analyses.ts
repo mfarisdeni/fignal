@@ -62,7 +62,13 @@ export function useAnalyses() {
         const payload = (await response.json().catch(() => null)) as
           | { error: string }
           | null;
-        throw new Error(payload?.error ?? "The desk could not publish this.");
+        // No safe server reason (a crash or gateway page has no JSON body), so
+        // name the status instead of swallowing it: a 403 and a 500 are fixed
+        // in very different places.
+        throw new Error(
+          payload?.error ??
+            `The desk could not publish this (HTTP ${response.status}).`,
+        );
       }
 
       // Keep the local id pointing at the Firestore document, so a later status
@@ -76,6 +82,11 @@ export function useAnalyses() {
 
       return { ...record, id: remoteId } as AnalysisRecord;
     } catch (caught) {
+      // Roll back the local working copy: it was written before the server
+      // confirmed, and leaving it behind publishes a phantom the members can
+      // never see - and that no later status change can address.
+      removeAnalysis(record.id);
+      setRecords(loadAnalyses());
       const message =
         caught instanceof Error ? caught.message : "The desk could not publish this.";
       setError(message);
@@ -88,6 +99,7 @@ export function useAnalyses() {
   const setStatus = useCallback(
     async (id: string, status: SignalStatus) => {
       const previous = loadAnalyses();
+      setError(null);
       // Optimistic: the desk moves a signal on mid-session and should not wait
       // on a round trip to see it.
       replaceAnalyses(previous.map((r) => (r.id === id ? { ...r, status } : r)));
@@ -100,7 +112,13 @@ export function useAnalyses() {
           body: JSON.stringify({ status }),
         });
         if (!response.ok) {
-          throw new Error("Could not update the status for members.");
+          const payload = (await response.json().catch(() => null)) as
+            | { error: string }
+            | null;
+          throw new Error(
+            payload?.error ??
+              `Could not update the status for members (HTTP ${response.status}).`,
+          );
         }
       } catch (caught) {
         // Roll back to what Firestore actually holds.

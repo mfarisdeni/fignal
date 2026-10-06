@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -21,11 +21,15 @@ export function PromptForm({
 }) {
   const { t } = useLanguage();
   const [raw, setRaw] = useState("");
+  // Same-tick double submits pass the `busy` prop before it re-renders, and a
+  // second POST would publish the signal twice. The ref closes that window.
+  const submitting = useRef(false);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     const prompt = raw.trim();
-    if (!prompt || busy) return;
+    if (!prompt || busy || submitting.current) return;
+    submitting.current = true;
     // Cleared after the write settles, so a refused publish leaves the prompt in
     // the box to fix and resubmit rather than losing the analyst's text.
     try {
@@ -33,6 +37,8 @@ export function PromptForm({
       setRaw("");
     } catch {
       setRaw(prompt);
+    } finally {
+      submitting.current = false;
     }
   };
 

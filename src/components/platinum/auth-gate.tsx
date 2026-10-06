@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { LockKeyhole, Mail } from "lucide-react";
+import { toast } from "sonner";
 import { LanguageToggleFloating } from "@/components/layout/language-toggle";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -34,6 +35,7 @@ export function AuthGate() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const submitting = useRef(false);
 
   async function onSignIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -52,6 +54,10 @@ export function AuthGate() {
 
   async function onRegister(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // The submit button disables on `busy`, but two submits landing in the same
+    // tick would both see the old state - the ref is what actually prevents a
+    // duplicate registration.
+    if (submitting.current) return;
     const form = event.currentTarget;
     const data = new FormData(form);
 
@@ -65,6 +71,7 @@ export function AuthGate() {
       return;
     }
 
+    submitting.current = true;
     setBusy(true);
     setError("");
     try {
@@ -85,13 +92,37 @@ export function AuthGate() {
       }
 
       // Signed in straight away: the account exists and the member should not be
-      // made to type the same password twice to reach the payment screen.
-      await signIn(username, password);
+      // made to type the same password twice to reach the payment screen. If the
+      // automatic sign-in fails, the account is still real - send them to the
+      // sign-in tab instead of reporting the registration as failed.
+      try {
+        await signIn(username, password);
+      } catch {
+        setMode("signIn");
+        setNotice("Account created. Please sign in to continue to payment.");
+        toast.success("Account created. Please sign in.");
+        return;
+      }
+      // Pending mode is the payment step: it renders the existing PaymentPanel
+      // (inline KlikQRIS checkout, never a popup) directly below this notice.
       setMode("pending");
       setNotice("Account created. Check your email to confirm the address.");
+      toast.success("Account created — complete payment to activate.");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not register.");
+      // Server messages are written for display ("That username is taken.",
+      // rate-limit notices); only a missing or unparseable response falls back
+      // to the generic line, and transport failures get their own wording. None
+      // of these paths can surface server internals or secrets.
+      const message =
+        caught instanceof TypeError
+          ? "Network problem. Check your connection and try again."
+          : caught instanceof Error
+            ? caught.message
+            : "Could not create the account.";
+      setError(message);
+      toast.error(message);
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   }

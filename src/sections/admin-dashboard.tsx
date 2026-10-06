@@ -45,7 +45,7 @@ function describe(record: AnalysisRecord, t: Translate): string {
  */
 export function AdminDashboard() {
   const { isUnlocked, lock } = useAdminAuth();
-  const { records, submit, setStatus, remove, pending } = useAnalyses();
+  const { records, submit, setStatus, remove, pending, error } = useAnalyses();
   const { t } = useLanguage();
   const [notice, setNotice] = useState<{ id: string; text: string } | null>(null);
 
@@ -114,6 +114,9 @@ export function AdminDashboard() {
                       id: "",
                       text: caught instanceof Error ? caught.message : "Could not publish.",
                     });
+                    // Let PromptForm see the failure too, so the refused prompt
+                    // stays in the box to fix and resubmit.
+                    throw caught;
                   }
                 }}
               />
@@ -121,6 +124,14 @@ export function AdminDashboard() {
           </section>
 
           <div className="space-y-4">
+            {error && (
+              <p
+                role="alert"
+                className="animate-enter rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-[13px] leading-relaxed text-destructive shadow-card"
+              >
+                {error}
+              </p>
+            )}
             {notice && (
               <p
                 role="status"
