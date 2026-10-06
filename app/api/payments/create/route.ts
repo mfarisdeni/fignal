@@ -15,6 +15,12 @@ import { newOrderId } from "@/lib/payments/order-id";
  *
  * Requires a signed-in member. An admin does not need to pay, and letting them
  * would create a membership record for the desk account that outlives the desk.
+ *
+ * The browser receives a public order DTO only - QR display fields and nothing
+ * that authenticates anything. The KlikQRIS transaction signature is stored
+ * server-side with the order and is never returned, on either the create or the
+ * reuse path, because anything the browser can read cannot serve as webhook
+ * authentication.
  */
 
 export async function POST(request: Request) {
@@ -117,7 +123,9 @@ export async function POST(request: Request) {
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    return NextResponse.json(order, { headers: { "cache-control": "no-store" } });
+    return NextResponse.json(toPublicOrder(order), {
+      headers: { "cache-control": "no-store" },
+    });
   } catch (error) {
     console.error("[payments] create failed", error);
     return NextResponse.json(
@@ -127,11 +135,40 @@ export async function POST(request: Request) {
   }
 }
 
-/** An unexpired PENDING order for this member, if one exists. */
-async function findReusableOrder(
-  db: Firestore,
-  uid: string,
-): Promise<Record<string, unknown> | null> {
+/**
+ * The public order shape: exactly what PaymentPanel renders. Constructed by
+ * picking fields, never by spreading the stored document minus one key - a
+ * denylist spread re-leaks the moment a new sensitive field is stored.
+ */
+type PublicOrder = {
+  orderId: string;
+  qrisUrl: string | null;
+  qrisImage: string | null;
+  expiredAt: string | null;
+  expiredMinutes: number | null;
+};
+
+function toPublicOrder(source: {
+  orderId?: unknown;
+  qrisUrl?: unknown;
+  qrisImage?: unknown;
+  expiredAt?: unknown;
+  expiredMinutes?: unknown;
+}): PublicOrder {
+  return {
+    orderId: typeof source.orderId === "string" ? source.orderId : "",
+    qrisUrl: typeof source.qrisUrl === "string" ? source.qrisUrl : null,
+    qrisImage: typeof source.qrisImage === "string" ? source.qrisImage : null,
+    expiredAt: typeof source.expiredAt === "string" ? source.expiredAt : null,
+    expiredMinutes:
+      typeof source.expiredMinutes === "number" && Number.isFinite(source.expiredMinutes)
+        ? source.expiredMinutes
+        : null,
+  };
+}
+
+/** An unexpired PENDING order for this member, as a public DTO, if one exists. */
+async function findReusableOrder(db: Firestore, uid: string): Promise<PublicOrder | null> {
   const snapshot = await db
     .collection("payments")
     .where("uid", "==", uid)
@@ -148,8 +185,5 @@ async function findReusableOrder(
     return null;
   }
 
-  const { uid: _uid, ...rest } = doc.data() as Record<string, unknown> & {
-    uid?: string;
-  };
-  return rest;
+  return toPublicOrder({ ...doc.data(), orderId: doc.id });
 }
