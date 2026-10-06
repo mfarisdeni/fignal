@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/server";
 import { sessionFacts } from "@/lib/auth/session";
+import { checkRateLimit, rateLimited, serviceUnavailable } from "@/lib/auth/rate-limit";
 import { MEMBERSHIP_PRICE_IDR } from "@/lib/payments/klikqris";
 
 /**
@@ -19,6 +20,20 @@ export async function GET(request: Request) {
   const facts = await sessionFacts(token);
   if (!facts.uid) {
     return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+  }
+
+  // Generous on purpose: the checkout polls every few seconds while a payment
+  // is in flight. This only stops runaway loops, never normal polling.
+  const pollResult = await checkRateLimit(request, {
+    name: "payments-status",
+    identifier: facts.uid,
+    identifierClass: "uid",
+    limit: 300,
+    window: "1 h",
+    failClosed: false,
+  });
+  if (!pollResult.ok) {
+    return pollResult.unavailable ? serviceUnavailable() : rateLimited(pollResult.retryAfter);
   }
 
   const orderId = new URL(request.url).searchParams.get("orderId");

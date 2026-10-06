@@ -3,6 +3,7 @@ import type { Firestore } from "firebase-admin/firestore";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/server";
 import { sessionFacts } from "@/lib/auth/session";
+import { checkRateLimit, clientIp, rateLimited, serviceUnavailable } from "@/lib/auth/rate-limit";
 import { MEMBERSHIP_PRICE_IDR, klikQris } from "@/lib/payments/klikqris";
 import { newOrderId } from "@/lib/payments/order-id";
 
@@ -41,6 +42,32 @@ export async function POST(request: Request) {
       { error: "Your account already has access." },
       { status: 409, headers: { "cache-control": "no-store" } },
     );
+  }
+
+  // Each success mints a provider invoice, so creation is capped per member
+  // with a per-IP backstop. The reuse path below counts too; its limits are
+  // generous enough that reopening the page never trips them.
+  const uidResult = await checkRateLimit(request, {
+    name: "payments-create-uid",
+    identifier: facts.uid,
+    identifierClass: "uid",
+    limit: 10,
+    window: "1 h",
+    failClosed: false,
+  });
+  if (!uidResult.ok) {
+    return uidResult.unavailable ? serviceUnavailable() : rateLimited(uidResult.retryAfter);
+  }
+  const ipResult = await checkRateLimit(request, {
+    name: "payments-create-ip",
+    identifier: clientIp(request),
+    identifierClass: "ip",
+    limit: 30,
+    window: "1 h",
+    failClosed: false,
+  });
+  if (!ipResult.ok) {
+    return ipResult.unavailable ? serviceUnavailable() : rateLimited(ipResult.retryAfter);
   }
 
   const db = adminDb();

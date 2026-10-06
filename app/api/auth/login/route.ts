@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminAuth, adminDb } from "@/lib/firebase/server";
 import { normalizeUsername } from "@/lib/auth/username";
+import {
+  checkRateLimit,
+  clientIp,
+  normalizeHandle,
+  rateLimited,
+  serviceUnavailable,
+} from "@/lib/auth/rate-limit";
 
 /**
  * POST /api/auth/login - sign in with username + password.
@@ -29,24 +36,69 @@ const body = z.object({
 });
 
 export async function POST(request: Request) {
+  const ipResult = await checkRateLimit(request, {
+    name: "login-ip",
+    identifier: clientIp(request),
+    identifierClass: "ip",
+    limit: 20,
+    window: "15 m",
+    failClosed: true,
+  });
+  if (!ipResult.ok) {
+    return ipResult.unavailable ? serviceUnavailable() : rateLimited(ipResult.retryAfter);
+  }
+
   const parsed = body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return reject();
 
   const handle = normalizeUsername(parsed.data.username);
+
+  // Peek without consuming: the account bucket counts failures only, so a peek
+  // here gates the attempt and `fail` below records it.
+  const accountPeek = await checkRateLimit(request, {
+    name: "login-account",
+    identifier: normalizeHandle(handle),
+    identifierClass: "account",
+    limit: 10,
+    window: "15 m",
+    mode: "fixed",
+    failClosed: true,
+    consume: false,
+  });
+  if (!accountPeek.ok) {
+    return accountPeek.unavailable ? serviceUnavailable() : rateLimited(accountPeek.retryAfter);
+  }
+
+  // Every failure below consumes one account token. The outcome is ignored:
+  // the caller is already being rejected, and a store outage must not change a
+  // wrong-password answer into anything else.
+  const fail = async () => {
+    await checkRateLimit(request, {
+      name: "login-account",
+      identifier: normalizeHandle(handle),
+      identifierClass: "account",
+      limit: 10,
+      window: "15 m",
+      mode: "fixed",
+      failClosed: true,
+    });
+    return reject();
+  };
+
   const db = adminDb();
 
   const reserved = await db.collection("usernames").doc(handle).get();
-  if (!reserved.exists) return reject();
+  if (!reserved.exists) return fail();
 
   const uid = reserved.get("uid") as string | null;
-  if (!uid) return reject();
+  if (!uid) return fail();
 
   const profile = await db.collection("users").doc(uid).get();
   const email = profile.get("email") as string | null;
-  if (!email) return reject();
+  if (!email) return fail();
 
   const verified = await verifyPassword(email, parsed.data.password);
-  if (!verified) return reject();
+  if (!verified) return fail();
 
   const customToken = await adminAuth().createCustomToken(uid, {
     // Surfaced in the ID token for display; the `admin` claim is what authorises.

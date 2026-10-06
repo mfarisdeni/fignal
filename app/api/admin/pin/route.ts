@@ -6,46 +6,19 @@ import {
   pinMatches,
   verifyPinToken,
 } from "@/lib/auth/pin-session";
+import { checkRateLimit, clientIp, rateLimited, serviceUnavailable } from "@/lib/auth/rate-limit";
 
 /**
  * POST /api/admin/pin - exchange the desk PIN for a signed session cookie.
  * GET  /api/admin/pin - is the PIN session still valid?
  * DELETE /api/admin/pin - drop it.
  *
- * Rate limited per instance in memory. Not a substitute for a real rate limiter,
- * but it turns a four-digit space that would otherwise be enumerable at network
- * speed into something that needs sustained effort.
+ * POST is rate limited per IP in Redis, shared across serverless instances -
+ * an in-memory map would give every instance its own budget. The limit fails
+ * closed: if the store is unreachable, guesses are refused rather than let
+ * through. GET and DELETE are not limited; checking or clearing a cookie
+ * provides no brute-force oracle.
  */
-
-const WINDOW_MS = 15 * 60 * 1000;
-const MAX_ATTEMPTS = 8;
-
-const attempts = new Map<string, { count: number; firstAt: number }>();
-
-function clientKey(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  return (forwarded?.split(",")[0] ?? "local").trim();
-}
-
-function lockedOut(key: string): boolean {
-  const record = attempts.get(key);
-  if (!record) return false;
-
-  if (Date.now() - record.firstAt > WINDOW_MS) {
-    attempts.delete(key);
-    return false;
-  }
-  return record.count >= MAX_ATTEMPTS;
-}
-
-function noteFailure(key: string): void {
-  const record = attempts.get(key);
-  if (!record || Date.now() - record.firstAt > WINDOW_MS) {
-    attempts.set(key, { count: 1, firstAt: Date.now() });
-    return;
-  }
-  record.count += 1;
-}
 
 export async function GET(request: Request) {
   const cookie = request.headers
@@ -59,25 +32,25 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const key = clientKey(request);
-
-  if (lockedOut(key)) {
-    return NextResponse.json(
-      { error: "Too many attempts. Wait a few minutes and try again." },
-      { status: 429, headers: { "cache-control": "no-store" } },
-    );
+  const ipResult = await checkRateLimit(request, {
+    name: "pin-ip",
+    identifier: clientIp(request),
+    identifierClass: "ip",
+    limit: 8,
+    window: "15 m",
+    failClosed: true,
+  });
+  if (!ipResult.ok) {
+    return ipResult.unavailable ? serviceUnavailable() : rateLimited(ipResult.retryAfter);
   }
 
   const body = (await request.json().catch(() => null)) as { pin?: string } | null;
   if (!body?.pin || !pinMatches(body.pin)) {
-    noteFailure(key);
     return NextResponse.json(
       { error: "Wrong PIN." },
       { status: 401, headers: { "cache-control": "no-store" } },
     );
   }
-
-  attempts.delete(key);
 
   const response = NextResponse.json(
     { ok: true },

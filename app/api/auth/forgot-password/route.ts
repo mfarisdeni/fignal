@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminAuth } from "@/lib/firebase/server";
 import { mailPasswordReset } from "@/lib/mail/templates";
+import {
+  checkRateLimit,
+  clientIp,
+  normalizeEmail,
+  rateLimited,
+  serviceUnavailable,
+} from "@/lib/auth/rate-limit";
 
 /**
  * POST /api/auth/forgot-password - email a reset link.
@@ -18,12 +25,40 @@ import { mailPasswordReset } from "@/lib/mail/templates";
 const body = z.object({ email: z.string().email().max(254) });
 
 export async function POST(request: Request) {
+  const ipResult = await checkRateLimit(request, {
+    name: "forgot-ip",
+    identifier: clientIp(request),
+    identifierClass: "ip",
+    limit: 10,
+    window: "1 h",
+    failClosed: false,
+  });
+  if (!ipResult.ok) {
+    return ipResult.unavailable ? serviceUnavailable() : rateLimited(ipResult.retryAfter);
+  }
+
   const parsed = body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
   }
 
   const { email } = parsed.data;
+
+  // Per-address bucket so one inbox cannot be mail-bombed. It consumes on every
+  // attempt: success and failure are deliberately indistinguishable here.
+  const emailResult = await checkRateLimit(request, {
+    name: "forgot-email",
+    identifier: normalizeEmail(email),
+    identifierClass: "email",
+    limit: 3,
+    window: "1 h",
+    mode: "fixed",
+    failClosed: false,
+  });
+  if (!emailResult.ok) {
+    return emailResult.unavailable ? serviceUnavailable() : rateLimited(emailResult.retryAfter);
+  }
+
   await deliverReset(email);
 
   // Always 200, always the same shape.

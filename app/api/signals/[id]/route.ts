@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebase/server";
 import { sessionFacts } from "@/lib/auth/session";
+import { checkRateLimit, rateLimited, serviceUnavailable } from "@/lib/auth/rate-limit";
 import { SIGNALS_COLLECTION } from "@/lib/signals/schema";
 import { SIGNAL_STATUSES } from "@/types/signal";
 
@@ -37,6 +38,20 @@ export async function PATCH(
       { error: "Only the admin desk can change a signal." },
       { status: 403, headers: { "cache-control": "no-store" } },
     );
+  }
+
+  // Same "signals-write" bucket as POST: publishes and status moves share one
+  // desk allowance.
+  const writeResult = await checkRateLimit(request, {
+    name: "signals-write",
+    identifier: facts.uid,
+    identifierClass: "uid",
+    limit: 60,
+    window: "1 h",
+    failClosed: false,
+  });
+  if (!writeResult.ok) {
+    return writeResult.unavailable ? serviceUnavailable() : rateLimited(writeResult.retryAfter);
   }
 
   const parsed = body.safeParse(await request.json().catch(() => null));

@@ -4,6 +4,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebase/server";
 import { mailAccountActive, mailAdminAlert } from "@/lib/mail/templates";
 import { normalizeUsername, validatePassword, validateUsername } from "@/lib/auth/username";
+import { checkRateLimit, clientIp, rateLimited, serviceUnavailable } from "@/lib/auth/rate-limit";
 
 /**
  * POST /api/auth/register - create the Firebase account.
@@ -25,6 +26,18 @@ const body = z.object({
 });
 
 export async function POST(request: Request) {
+  const ipResult = await checkRateLimit(request, {
+    name: "register-ip",
+    identifier: clientIp(request),
+    identifierClass: "ip",
+    limit: 10,
+    window: "1 h",
+    failClosed: false,
+  });
+  if (!ipResult.ok) {
+    return ipResult.unavailable ? serviceUnavailable() : rateLimited(ipResult.retryAfter);
+  }
+
   const parsed = body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return fail("Check the form and try again.", 400);

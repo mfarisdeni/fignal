@@ -3,6 +3,7 @@ import { z } from "zod";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/server";
 import { sessionFacts } from "@/lib/auth/session";
+import { checkRateLimit, rateLimited, serviceUnavailable } from "@/lib/auth/rate-limit";
 import { translateToIndonesian } from "@/lib/translate/groq";
 import { SIGNALS_COLLECTION } from "@/lib/signals/schema";
 
@@ -45,6 +46,20 @@ export async function POST(request: Request) {
       { error: "Only the admin desk can publish signals." },
       { status: 403, headers: { "cache-control": "no-store" } },
     );
+  }
+
+  // Shared with PATCH: one desk bucket for all signal writes, guarding the
+  // Groq translation spend and runaway clients rather than attackers.
+  const writeResult = await checkRateLimit(request, {
+    name: "signals-write",
+    identifier: facts.uid,
+    identifierClass: "uid",
+    limit: 60,
+    window: "1 h",
+    failClosed: false,
+  });
+  if (!writeResult.ok) {
+    return writeResult.unavailable ? serviceUnavailable() : rateLimited(writeResult.retryAfter);
   }
 
   const parsed = body.safeParse(await request.json().catch(() => null));
