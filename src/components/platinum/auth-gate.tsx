@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { LockKeyhole, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { LanguageToggleFloating } from "@/components/layout/language-toggle";
@@ -9,11 +9,15 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
 import { FignalMark } from "@/components/layout/top-nav";
 import { PaymentPanel } from "@/components/platinum/payment-panel";
-import { validatePassword, validateUsername } from "@/lib/auth/username";
+import { validatePassword } from "@/lib/auth/username";
 
 /**
  * Gated state for the protected /platinum route: sign in, register, or wait
  * for payment.
+ *
+ * Sign-in is native Firebase: Google, or email with a password. There is no
+ * username to invent and no second form after signup - a new account lands
+ * straight on payment, which is the only remaining step.
  *
  * Three states rather than one, because registration and payment are separate
  * facts. A member who has an account but has not paid is neither signed out nor
@@ -23,8 +27,42 @@ import { validatePassword, validateUsername } from "@/lib/auth/username";
 
 type Mode = "signIn" | "register" | "pending";
 
+/** Google "G" mark for the sign-in button (inline SVG, no extra dependency). */
+function GoogleMark() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 48 48" aria-hidden="true">
+      <path
+        fill="#FFC107"
+        d="M43.8 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.4 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.7-.2-3.9z"
+      />
+      <path
+        fill="#FF3D00"
+        d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"
+      />
+      <path
+        fill="#4CAF50"
+        d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"
+      />
+      <path
+        fill="#1976D2"
+        d="M43.8 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.7-.2-3.9z"
+      />
+    </svg>
+  );
+}
+
 export function AuthGate() {
-  const { signIn, session, isAuthenticated, configError } = useAuth();
+  const {
+    signInWithGoogle,
+    signInWithEmail,
+    signUpWithEmail,
+    sendPasswordReset,
+    authError,
+    clearAuthError,
+    session,
+    isAuthenticated,
+    configError,
+  } = useAuth();
   const { t } = useLanguage();
 
   // A member account with no entitlement is not an error - it is the normal
@@ -35,113 +73,99 @@ export function AuthGate() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showReset, setShowReset] = useState(false);
   const submitting = useRef(false);
 
-  async function onSignIn(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    setBusy(true);
-    setError("");
-    try {
-      await signIn(String(data.get("username") ?? ""), String(data.get("password") ?? ""));
-      setMode("pending");
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not sign in.");
-    } finally {
-      setBusy(false);
-    }
-  }
+  // A redirect sign-in resolves away from any form, so its failure surfaces
+  // through context instead of a catch block. Show it once.
+  useEffect(() => {
+    if (!authError) return;
+    setError(authError);
+    toast.error(authError);
+    clearAuthError();
+  }, [authError, clearAuthError]);
 
-  async function onRegister(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    // The submit button disables on `busy`, but two submits landing in the same
-    // tick would both see the old state - the ref is what actually prevents a
-    // duplicate registration.
+  /** Runs an auth attempt with the shared busy/duplicate/error handling. */
+  async function attempt(
+    run: () => Promise<void>,
+    done: { notice: string; toast: string },
+  ) {
+    // The buttons disable on `busy`, but two submits landing in the same tick
+    // would both see the old state - the ref is what actually prevents a
+    // duplicate account or a double popup.
     if (submitting.current) return;
-    const form = event.currentTarget;
-    const data = new FormData(form);
-
-    const username = String(data.get("username") ?? "");
-    const password = String(data.get("password") ?? "");
-    const email = String(data.get("email") ?? "");
-
-    const problem = validateUsername(username) ?? validatePassword(password);
-    if (problem) {
-      setError(problem);
-      return;
-    }
-
     submitting.current = true;
     setBusy(true);
     setError("");
     try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ username, email, password }),
-      });
-      const payload = (await response.json().catch(() => null)) as
-        | { ok: true }
-        | { error: string }
-        | null;
-
-      if (!response.ok || !payload || !("ok" in payload)) {
-        throw new Error(
-          payload && "error" in payload ? payload.error : "Could not create the account.",
-        );
-      }
-
-      // Signed in straight away: the account exists and the member should not be
-      // made to type the same password twice to reach the payment screen. If the
-      // automatic sign-in fails, the account is still real - send them to the
-      // sign-in tab instead of reporting the registration as failed.
-      try {
-        await signIn(username, password);
-      } catch {
-        setMode("signIn");
-        setNotice("Account created. Please sign in to continue to payment.");
-        toast.success("Account created. Please sign in.");
-        return;
-      }
+      await run();
       // Pending mode is the payment step: it renders the existing PaymentPanel
       // (inline KlikQRIS checkout, never a popup) directly below this notice.
       setMode("pending");
-      setNotice("Account created. Check your email to confirm the address.");
-      toast.success("Account created — complete payment to activate.");
+      setNotice(done.notice);
+      toast.success(done.toast);
     } catch (caught) {
-      // Server messages are written for display ("That username is taken.",
-      // rate-limit notices); only a missing or unparseable response falls back
-      // to the generic line, and transport failures get their own wording. None
-      // of these paths can surface server internals or secrets.
-      const message =
-        caught instanceof TypeError
-          ? "Network problem. Check your connection and try again."
-          : caught instanceof Error
-            ? caught.message
-            : "Could not create the account.";
-      setError(message);
-      toast.error(message);
+      // An empty message means the user aborted (closed the Google popup) -
+      // show nothing rather than an error for a deliberate cancel.
+      const message = caught instanceof Error ? caught.message : "";
+      if (message) {
+        setError(message);
+        toast.error(message);
+      }
     } finally {
       submitting.current = false;
       setBusy(false);
     }
   }
 
-  async function onForgotPassword() {
-    const email = window.prompt("Email address for the reset link:");
-    if (!email) return;
-    const response = await fetch("/api/auth/forgot-password", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email }),
+  function onGoogle() {
+    void attempt(() => signInWithGoogle(), {
+      notice: "Signed in with Google.",
+      toast: "Signed in — complete payment to activate.",
     });
-    // The endpoint answers the same way whether or not the address exists.
-    setNotice(
-      response.ok
-        ? "If that address has an account, a reset link is on its way."
-        : "Enter a valid email address.",
-    );
+  }
+
+  function onEmailAuth(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const email = String(data.get("email") ?? "");
+    const password = String(data.get("password") ?? "");
+
+    if (mode === "register") {
+      const problem = validatePassword(password);
+      if (problem) {
+        setError(problem);
+        return;
+      }
+      void attempt(() => signUpWithEmail(email, password), {
+        notice: "Account created. Complete payment to activate Platinum.",
+        toast: "Account created — complete payment to activate.",
+      });
+      return;
+    }
+
+    void attempt(() => signInWithEmail(email, password), {
+      notice: "Signed in.",
+      toast: "Signed in — complete payment to activate.",
+    });
+  }
+
+  function onReset(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const email = String(data.get("resetEmail") ?? "");
     setError("");
+    sendPasswordReset(email)
+      .then(() => {
+        setShowReset(false);
+        // Deliberately the same whether or not the address has an account.
+        setNotice("If that address has an account, a reset link is on its way.");
+      })
+      .catch((caught: unknown) => {
+        const message =
+          caught instanceof Error ? caught.message : "Could not send the link.";
+        setError(message);
+      });
   }
 
   return (
@@ -206,14 +230,33 @@ export function AuthGate() {
           <>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               {mode === "register"
-                ? "Pick a username and a password. Your email is used for the reset link if you forget it."
+                ? "One account for everything. Google or email - no username to invent."
                 : t("auth.subtitle")}
             </p>
+
+            <div className="mt-7">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onGoogle}
+                disabled={busy}
+                className="w-full rounded-full"
+              >
+                <GoogleMark />
+                <span className="ml-2">Continue with Google</span>
+              </Button>
+
+              <div className="my-4 flex items-center gap-3 text-[11px] text-muted-foreground">
+                <span className="h-px flex-1 bg-border" aria-hidden="true" />
+                or continue with email
+                <span className="h-px flex-1 bg-border" aria-hidden="true" />
+              </div>
+            </div>
 
             <div
               role="tablist"
               aria-label={mode === "register" ? "Account" : "Welcome"}
-              className="mt-7 grid grid-cols-2 gap-1 rounded-full border border-border bg-muted p-1"
+              className="grid grid-cols-2 gap-1 rounded-full border border-border bg-muted p-1"
             >
               {(["signIn", "register"] as const).map((tab) => (
                 <button
@@ -225,6 +268,7 @@ export function AuthGate() {
                     setMode(tab);
                     setError("");
                     setNotice("");
+                    setShowReset(false);
                   }}
                   className={`rounded-full px-3 py-2 text-sm font-semibold transition-colors ${
                     mode === tab
@@ -237,36 +281,19 @@ export function AuthGate() {
               ))}
             </div>
 
-            <form
-              onSubmit={mode === "register" ? onRegister : onSignIn}
-              className="mt-4 space-y-3 text-left"
-            >
+            <form onSubmit={onEmailAuth} className="mt-4 space-y-3 text-left">
               <label className="block space-y-1.5">
                 <span className="text-xs font-medium text-muted-foreground">
-                  Username
+                  Email
                 </span>
                 <input
-                  name="username"
-                  autoComplete="username"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
                   required
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </label>
-
-              {mode === "register" && (
-                <label className="block space-y-1.5">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Email
-                  </span>
-                  <input
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  />
-                </label>
-              )}
 
               <label className="block space-y-1.5">
                 <span className="text-xs font-medium text-muted-foreground">
@@ -279,7 +306,7 @@ export function AuthGate() {
                     mode === "register" ? "new-password" : "current-password"
                   }
                   required
-                  minLength={8}
+                  minLength={mode === "register" ? 8 : undefined}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </label>
@@ -298,15 +325,35 @@ export function AuthGate() {
               </Button>
             </form>
 
-            <div className="mt-4 flex items-center justify-between text-xs">
+            <div className="mt-4 text-left text-xs">
               {mode === "signIn" ? (
-                <button
-                  type="button"
-                  onClick={onForgotPassword}
-                  className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
-                >
-                  Forgot password
-                </button>
+                showReset ? (
+                  <form
+                    onSubmit={onReset}
+                    className="flex items-center gap-2"
+                  >
+                    <input
+                      name="resetEmail"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      placeholder="Email address"
+                      aria-label="Email address for the reset link"
+                      className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                    <Button type="submit" size="sm" className="shrink-0 rounded-full">
+                      Send link
+                    </Button>
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowReset(true)}
+                    className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                  >
+                    Forgot password
+                  </button>
+                )
               ) : (
                 <span className="text-muted-foreground">
                   Rp10.000 to activate after signup

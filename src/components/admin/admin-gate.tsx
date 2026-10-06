@@ -26,7 +26,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 export function AdminGate() {
   const { isUnlocked, ready, unlockWithPin } = useAdminAuth();
-  const { signIn, isAuthenticated, refreshClaims, signOut, session } = useAuth();
+  const { signInWithEmail, isAuthenticated, refreshClaims, signOut, session } = useAuth();
 
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -52,7 +52,7 @@ export function AdminGate() {
           return;
         }
 
-        await signIn(String(data.get("username") ?? ""), String(data.get("password") ?? ""));
+        await signInWithEmail(String(data.get("email") ?? ""), String(data.get("password") ?? ""));
         await refreshClaims();
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Could not sign in.");
@@ -60,7 +60,7 @@ export function AdminGate() {
         setBusy(false);
       }
     },
-    [refreshClaims, signIn, unlockWithPin],
+    [refreshClaims, signInWithEmail, unlockWithPin],
   );
 
   if (!ready) {
@@ -124,10 +124,11 @@ export function AdminGate() {
           {mode === "account" ? (
             <>
               <label className="block space-y-1.5">
-                <span className="text-xs font-medium text-muted-foreground">Username</span>
+                <span className="text-xs font-medium text-muted-foreground">Email</span>
                 <input
-                  name="username"
-                  autoComplete="username"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
                   required
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />

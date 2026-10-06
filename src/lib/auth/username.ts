@@ -38,6 +38,29 @@ const RESERVED = new Set([
 export const normalizeUsername = (value: string): string =>
   value.trim().toLowerCase();
 
+/**
+ * Shape a display name or email local part into a legal handle, or null when
+ * nothing usable survives. Used when the handle is derived rather than asked
+ * for (Google sign-in), so "M Farisdeni" becomes mfarisdeni and emoji soup
+ * becomes nothing instead of a broken document id.
+ */
+export function handleCandidate(raw: string): string | null {
+  const cleaned = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._]/g, "")
+    .replace(/^[._]+|[._]+$/g, "");
+  if (
+    cleaned.length < USERNAME_MIN ||
+    cleaned.length > USERNAME_MAX ||
+    !HANDLE.test(cleaned) ||
+    RESERVED.has(cleaned)
+  ) {
+    return null;
+  }
+  return cleaned;
+}
+
 export function validateUsername(value: string): string | null {
   const trimmed = value.trim();
 
