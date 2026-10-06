@@ -80,10 +80,12 @@ service cloud.firestore {
     // ---- usernames ---------------------------------------------------------
     // Reservation table, so two people cannot claim the same handle at
     // registration. Case-insensitive: keys are stored lowercase.
+    // Creation is server-only: the registration API reserves handles through
+    // the Admin SDK, which bypasses these rules. Allowing client creates lets
+    // any signed-in user squat handles and fail other people's signups.
     match /usernames/{handle} {
       allow read: if signedIn();
-      allow create: if signedIn()
-        && !exists(/databases/$(database)/documents/usernames/$(handle));
+      allow create: if false;
       allow update, delete: if false;
     }
 
