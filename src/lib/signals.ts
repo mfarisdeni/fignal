@@ -63,6 +63,16 @@ export function isResultStatus(status: TradingSignal["status"]): boolean {
 }
 
 /**
+ * Resolved signals are the track record: they stand as published and can
+ * never be deleted - a desk that can erase a TP or SL rewrites its own
+ * history. Anything not yet resolved (including duplicates and phantoms)
+ * may go.
+ */
+export function isDeletableStatus(status: string): boolean {
+  return !(RESULT_STATUSES as readonly string[]).includes(status);
+}
+
+/**
  * The markets worth offering as a filter, taken from what the feed actually
  * holds rather than from the registry.
  *

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Lock, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Lock, ShieldCheck, Trash2 } from "lucide-react";
 import { AdminGate } from "@/components/admin/admin-gate";
 import { AnalysisRecordCard } from "@/components/admin/analysis-record-card";
 import { PromptForm } from "@/components/admin/prompt-form";
@@ -10,8 +10,10 @@ import { NoTradeState } from "@/components/platinum/no-trade-state";
 import { Button } from "@/components/ui/button";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { useAnalyses } from "@/hooks/use-analyses";
+import { authHeaders } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
 import type { MessageKey, MessageVars } from "@/lib/i18n";
+import { formatDateShort } from "@/lib/signals";
 import type { AnalysisRecord } from "@/types/signal";
 
 type Translate = (key: MessageKey, vars?: MessageVars) => string;
@@ -43,11 +45,68 @@ function describe(record: AnalysisRecord, t: Translate): string {
  * (pair, call, confidence, entry, SL, TP) joins the member feed immediately.
  * Reached by URL only: nothing in the member navigation links here.
  */
+type MemberSignal = {
+  id: string;
+  pair: string;
+  direction: string;
+  status: string;
+  generatedAt: string;
+};
+
 export function AdminDashboard() {
   const { isUnlocked, lock } = useAdminAuth();
   const { records, submit, setStatus, remove, translate, pending, error } = useAnalyses();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const [notice, setNotice] = useState<{ id: string; text: string } | null>(null);
+  const [memberSignals, setMemberSignals] = useState<MemberSignal[] | null>(null);
+
+  const fetchMemberSignals = useCallback(async (): Promise<MemberSignal[] | null> => {
+    try {
+      const response = await fetch("/api/signals", {
+        headers: { ...(await authHeaders()) },
+      });
+      if (!response.ok) return null;
+      const payload = (await response.json().catch(() => null)) as {
+        signals?: MemberSignal[];
+      } | null;
+      return Array.isArray(payload?.signals) ? payload.signals : null;
+    } catch {
+      // Never break /admin over the orphan lookup: the desk list below is
+      // the primary tool and works without it.
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isUnlocked) return;
+    let cancelled = false;
+    void fetchMemberSignals().then((signals) => {
+      if (!cancelled && signals) setMemberSignals(signals);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isUnlocked, fetchMemberSignals]);
+
+  // Documents members can see that this browser's desk list has no record
+  // of - the old remove button stranded them by deleting locally only.
+  const orphans = useMemo(() => {
+    const localIds = new Set(records.map((record) => record.id));
+    return (memberSignals ?? []).filter((signal) => !localIds.has(signal.id));
+  }, [memberSignals, records]);
+
+  const removeOrphan = useCallback(
+    (id: string) => {
+      // remove() never throws; refresh afterwards so a successful delete
+      // drops the row and a refusal leaves it standing.
+      void remove(id).finally(() => {
+        void fetchMemberSignals().then((signals) => {
+          if (signals) setMemberSignals(signals);
+        });
+      });
+    },
+    [remove, fetchMemberSignals],
+  );
 
   if (!isUnlocked) return <AdminGate />;
 
@@ -163,6 +222,47 @@ export function AdminDashboard() {
                   onTranslate={translate}
                 />
               ))
+            )}
+
+            {orphans.length > 0 && (
+              <section
+                aria-label={t("admin.orphansTitle")}
+                className="rounded-lg border border-border bg-card p-4 shadow-card sm:p-5"
+              >
+                <h2 className="text-sm font-semibold tracking-tight">
+                  {t("admin.orphansTitle")}
+                </h2>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {t("admin.orphansBody")}
+                </p>
+                <ul className="mt-3 space-y-2">
+                  {orphans.map((signal) => (
+                    <li
+                      key={signal.id}
+                      className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-[13px] font-semibold">
+                          {signal.pair} · {signal.direction}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground tnum">
+                          {signal.status} ·{" "}
+                          {formatDateShort(signal.generatedAt, language)}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => removeOrphan(signal.id)}
+                        aria-label={t("admin.ariaDelete", { pair: signal.pair })}
+                        className="ml-auto shrink-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             )}
           </div>
         </div>

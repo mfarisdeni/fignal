@@ -99,3 +99,49 @@ export async function POST(request: Request) {
     { headers: { "cache-control": "no-store" } },
   );
 }
+
+/**
+ * GET /api/signals - the desk's own view of what members can see.
+ *
+ * The admin page works from localStorage records, so a document deleted
+ * locally (or published from another browser) is invisible there while
+ * staying live for members. This listing lets /admin surface those orphans
+ * with a working delete button. Admin-only, newest first.
+ */
+export async function GET(request: Request) {
+  const header = request.headers.get("authorization") ?? "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : undefined;
+
+  const facts = await sessionFacts(token);
+  if (!facts.isAdmin) {
+    return NextResponse.json(
+      { error: "Only the admin desk can list signals." },
+      { status: 403, headers: { "cache-control": "no-store" } },
+    );
+  }
+
+  const readResult = await checkRateLimit(request, {
+    name: "signals-read",
+    identifier: facts.uid,
+    identifierClass: "uid",
+    limit: 600,
+    window: "1 h",
+    failClosed: false,
+  });
+  if (!readResult.ok) {
+    return readResult.unavailable ? serviceUnavailable() : rateLimited(readResult.retryAfter);
+  }
+
+  const snapshot = await adminDb()
+    .collection(SIGNALS_COLLECTION)
+    .orderBy("generatedAt", "desc")
+    .limit(200)
+    .get();
+
+  return NextResponse.json(
+    {
+      signals: snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+    },
+    { headers: { "cache-control": "no-store" } },
+  );
+}

@@ -274,6 +274,11 @@ export const MESSAGES = {
     en: "Submit a prompt to publish its entry, stop loss, targets and confidence to the member feed.",
     id: "Kirim prompt untuk mempublikasikan entry, stop loss, target, dan keyakinan ke feed member.",
   },
+  "admin.orphansTitle": { en: "Live on member feed", id: "Live di feed member" },
+  "admin.orphansBody": {
+    en: "Signals members can see that are missing from this desk list - usually left behind by the old remove button. Deleting here removes them for members too.",
+    id: "Sinyal yang terlihat member tapi tidak ada di daftar desk ini - biasanya tertinggal oleh tombol hapus yang lama. Menghapus di sini menghapusnya untuk member juga.",
+  },
   "admin.publishedWith": {
     en: "{pair} published with {fields}.",
     id: "{pair} dipublikasikan dengan {fields}.",

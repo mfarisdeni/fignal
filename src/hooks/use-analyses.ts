@@ -132,7 +132,34 @@ export function useAnalyses() {
     [],
   );
 
-  const remove = useCallback((id: string) => {
+  /**
+   * Delete a signal for real: the member-visible Firestore document first,
+   * then the local working copy. A 404 means the document is already gone
+   * (local/remote drift), which counts as deleted. Failures keep the local
+   * record so the miss stays visible and retryable, with the refusal in the
+   * dashboard alert. Never throws, so card buttons can fire and forget.
+   */
+  const remove = useCallback(async (id: string): Promise<void> => {
+    setError(null);
+    try {
+      const response = await fetch(`/api/signals/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { ...(await authHeaders()) },
+      });
+      if (!response.ok && response.status !== 404) {
+        const payload = (await response.json().catch(() => null)) as
+          | { error: string }
+          | null;
+        throw new Error(
+          payload?.error ?? `Could not delete this signal (HTTP ${response.status}).`,
+        );
+      }
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Could not delete this signal.",
+      );
+      return;
+    }
     removeAnalysis(id);
     setRecords(loadAnalyses());
   }, []);
