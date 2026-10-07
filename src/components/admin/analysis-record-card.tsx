@@ -89,8 +89,14 @@ export function AnalysisRecordCard({
     try {
       await onTranslate(record.id);
       toast.success(t("admin.translateDone"));
-    } catch {
-      toast.error(t("admin.translateFail"));
+    } catch (caught) {
+      // Show the server's own words: for a desk-owned Groq key the exact
+      // failure ("key not configured", "Groq 401", ...) is what fixes it.
+      toast.error(
+        caught instanceof Error && caught.message
+          ? caught.message
+          : t("admin.translateFail"),
+      );
     } finally {
       setTranslating(false);
     }

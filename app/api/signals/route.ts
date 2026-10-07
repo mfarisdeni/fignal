@@ -4,7 +4,6 @@ import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/server";
 import { sessionFacts } from "@/lib/auth/session";
 import { checkRateLimit, rateLimited, serviceUnavailable } from "@/lib/auth/rate-limit";
-import { translateToIndonesian } from "@/lib/translate/groq";
 import { SIGNALS_COLLECTION } from "@/lib/signals/schema";
 
 /**
@@ -15,9 +14,11 @@ import { SIGNALS_COLLECTION } from "@/lib/signals/schema";
  * any other device had nothing to read.
  *
  * Publishing goes through the server rather than straight from the browser so
- * that the admin claim is verified before the write, translation happens where
- * the Groq key cannot leak, and the analyst's original English is stored beside
- * the Indonesian rather than replaced by it.
+ * that the admin claim is verified before the write.
+ *
+ * Translation is deliberately NOT automatic here: the desk translates by hand
+ * from the admin card (POST /api/signals/[id]/translate), so every publish
+ * lands with reasonId null and translationPending true until then.
  */
 
 const body = z.object({
@@ -72,11 +73,6 @@ export async function POST(request: Request) {
 
   const input = parsed.data;
 
-  // Translation failure must not block the publish. The signal the desk just
-  // wrote is real and members are waiting on it; falling back to the English
-  // reason until the next publish is correct, failing closed is not.
-  const translated = await translateToIndonesian(input.reason);
-
   const doc = await adminDb().collection(SIGNALS_COLLECTION).add({
     pair: input.pair,
     direction: input.direction,
@@ -90,8 +86,8 @@ export async function POST(request: Request) {
     call: input.call ?? null,
     sessionLabel: input.sessionLabel ?? null,
     reason: input.reason,
-    reasonId: translated.ok ? translated.text : null,
-    translationPending: !translated.ok,
+    reasonId: null,
+    translationPending: true,
     note: input.note ?? null,
     generatedAt: new Date().toISOString(),
     publishedAt: FieldValue.serverTimestamp(),
@@ -99,7 +95,7 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json(
-    { ok: true, id: doc.id, translated: translated.ok },
+    { ok: true, id: doc.id, translated: false },
     { headers: { "cache-control": "no-store" } },
   );
 }

@@ -58,9 +58,12 @@ export async function POST(
 
   const translated = await translateToIndonesian(reason);
   if (!translated.ok) {
+    // Surfaced, not swallowed: this endpoint is admin-only, the caller owns
+    // the Groq key, and "try again" explains nothing. The reason never carries
+    // the key - only a status and the provider's own message, truncated.
     console.error(`[signals] translate ${id} failed: ${translated.reason}`);
     return NextResponse.json(
-      { error: "Translation failed. Try again." },
+      { error: translated.reason },
       { status: 502, headers: { "cache-control": "no-store" } },
     );
   }
