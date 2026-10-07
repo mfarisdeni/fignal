@@ -179,6 +179,8 @@ export async function POST(request: Request) {
  */
 type PublicOrder = {
   orderId: string;
+  /** Final billable total in rupiah, including the provider's unique code. */
+  total: number;
   qrisUrl: string | null;
   qrisImage: string | null;
   expiredAt: string | null;
@@ -187,6 +189,7 @@ type PublicOrder = {
 
 function toPublicOrder(source: {
   orderId?: unknown;
+  totalAmount?: unknown;
   qrisUrl?: unknown;
   qrisImage?: unknown;
   expiredAt?: unknown;
@@ -194,6 +197,10 @@ function toPublicOrder(source: {
 }): PublicOrder {
   return {
     orderId: typeof source.orderId === "string" ? source.orderId : "",
+    total:
+      typeof source.totalAmount === "number" && Number.isFinite(source.totalAmount)
+        ? Math.round(source.totalAmount)
+        : MEMBERSHIP_PRICE_IDR,
     qrisUrl: typeof source.qrisUrl === "string" ? source.qrisUrl : null,
     qrisImage: typeof source.qrisImage === "string" ? source.qrisImage : null,
     expiredAt: typeof source.expiredAt === "string" ? source.expiredAt : null,

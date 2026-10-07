@@ -9,9 +9,12 @@ import { Button } from "@/components/ui/button";
 /**
  * QRIS checkout for the Rp10.000 membership.
  *
- * The price shown here is cosmetic. The amount charged is a server constant in
- * lib/payments/klikqris.ts, so editing this component changes nothing about what
- * the member is billed - it would only make the screen lie.
+ * The base price above the button is cosmetic; the billed total is a server
+ * constant in lib/payments/klikqris.ts. But once an order exists, the total
+ * shown comes from the server's order response (base + provider unique code),
+ * so the screen always shows the exact amount the QRIS actually bills. An
+ * explicit confirm step sits between the price and order creation so stray
+ * taps don't mint pending QRIS orders.
  *
  * Polling is a convenience, never the authority. /api/payments/status only
  * reports what Firestore holds, and only the webhook writes PAID, so a member
@@ -29,6 +32,7 @@ const LIST_PRICE = 20_000;
 
 type Order = {
   orderId: string;
+  total: number;
   qrisImage: string | null;
   qrisUrl: string | null;
   expiredAt: string | null;
@@ -38,6 +42,7 @@ export function PaymentPanel() {
   const { refreshClaims } = useAuth();
   const { t } = useLanguage();
   const [order, setOrder] = useState<Order | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(false);
   const [paid, setPaid] = useState(false);
@@ -136,6 +141,11 @@ export function PaymentPanel() {
       <p className="mt-1 text-center text-[11px] font-medium text-buy">
         {t("pay.promo")}
       </p>
+      {!order && (
+        <p className="mx-auto mt-2 max-w-[26ch] text-center text-[11px] leading-relaxed text-muted-foreground">
+          {t("pay.uniqueIntro")}
+        </p>
+      )}
 
       {error && (
         <p role="alert" className="mt-4 text-center text-xs text-destructive">
@@ -143,26 +153,53 @@ export function PaymentPanel() {
         </p>
       )}
 
-      {!order ? (
-        <Button
-          onClick={() => void start()}
-          disabled={starting}
-          className="mt-5 w-full rounded-full"
-        >
-          {starting ? (
-            <>
-              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              {t("pay.preparing")}
-            </>
-          ) : (
-            <>
-              <QrCode className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-              {t("pay.pay")} {rupiah.format(PRICE)} {t("pay.withQris")}
-            </>
-          )}
+      {!order && !confirming ? (
+        <Button onClick={() => setConfirming(true)} className="mt-5 w-full rounded-full">
+          <QrCode className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+          {t("pay.continue")}
         </Button>
+      ) : !order ? (
+        <div className="mt-5">
+          <div className="rounded-lg bg-muted/50 p-4">
+            <p className="text-sm font-semibold">{t("pay.confirmTitle")}</p>
+            <div className="mt-2 flex items-baseline justify-between gap-2 text-sm">
+              <span className="text-muted-foreground">Fignal Platinum</span>
+              <span className="font-semibold tnum">{rupiah.format(PRICE)}</span>
+            </div>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+              {t("pay.uniqueNote")}
+            </p>
+          </div>
+          <Button
+            onClick={() => void start()}
+            disabled={starting}
+            className="mt-4 w-full rounded-full"
+          >
+            {starting ? (
+              <>
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                {t("pay.preparing")}
+              </>
+            ) : (
+              t("pay.proceed")
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => setConfirming(false)}
+            disabled={starting}
+            className="mt-1 w-full rounded-full"
+          >
+            {t("pay.back")}
+          </Button>
+        </div>
       ) : (
         <div className="mt-5 text-center">
+          <p className="text-[28px] font-bold leading-none tnum">{rupiah.format(order.total)}</p>
+          <p className="mt-1.5 text-xs font-semibold">{t("pay.exactAmount")}</p>
+          <p className="mx-auto mb-4 mt-1 max-w-[32ch] text-[11px] leading-relaxed text-muted-foreground">
+            {t("pay.uniqueNote")}
+          </p>
           {order.qrisImage ? (
             // Hosted by KlikQris, not us.
             // eslint-disable-next-line @next/next/no-img-element

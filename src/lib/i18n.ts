@@ -163,8 +163,19 @@ export const MESSAGES = {
   },
   "pay.promo": { en: "50% off - first month", id: "Diskon 50% - bulan pertama" },
   "pay.preparing": { en: "Preparing QRIS...", id: "Menyiapkan QRIS..." },
-  "pay.pay": { en: "Pay", id: "Bayar" },
-  "pay.withQris": { en: "with QRIS", id: "dengan QRIS" },
+  "pay.continue": { en: "Continue to QRIS payment", id: "Lanjut ke pembayaran QRIS" },
+  "pay.uniqueIntro": {
+    en: "A unique 3-digit code is added at checkout for automatic verification.",
+    id: "Kode unik 3 digit ditambahkan saat checkout untuk verifikasi otomatis.",
+  },
+  "pay.confirmTitle": { en: "Confirm your payment", id: "Konfirmasi pembayaran Anda" },
+  "pay.proceed": { en: "Proceed to pay", id: "Lanjut bayar" },
+  "pay.back": { en: "Back", id: "Kembali" },
+  "pay.exactAmount": { en: "Pay this exact amount", id: "Bayar dengan nominal tepat ini" },
+  "pay.uniqueNote": {
+    en: "Includes a unique 3-digit code so your payment is verified automatically.",
+    id: "Termasuk kode unik 3 digit agar pembayaran Anda terverifikasi otomatis.",
+  },
   "pay.openCode": { en: "Open the QRIS code", id: "Buka kode QRIS" },
   "pay.scanNote": {
     en: "Scanning with any QRIS app. This page updates on its own.",
