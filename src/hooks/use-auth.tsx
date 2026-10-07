@@ -81,6 +81,7 @@ type AuthContextValue = {
 const SIGNED_OUT: Session = {
   uid: "",
   email: null,
+  emailVerified: false,
   username: null,
   isAdmin: false,
   isMember: false,
@@ -118,8 +119,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         cache: "no-store",
       });
       if (!provisioned.ok) return;
+      // A fresh claim (owner elevation) is invisible until the token rotates;
+      // force it now so the gate re-evaluates immediately instead of within
+      // the hour.
+      const granted = (await provisioned.json().catch(() => null)) as {
+        elevated?: boolean;
+      } | null;
+      const freshToken = granted?.elevated
+        ? await user.getIdToken(true)
+        : token;
       const response = await fetch("/api/session", {
-        headers: { authorization: `Bearer ${token}` },
+        headers: { authorization: `Bearer ${freshToken}` },
         cache: "no-store",
       });
       if (!response.ok) return;

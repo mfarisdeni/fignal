@@ -22,6 +22,20 @@ import { checkRateLimit, rateLimited, serviceUnavailable } from "@/lib/auth/rate
  * the payment webhook, so signing in and paying stay two separate facts.
  */
 
+/**
+ * Mailbox-verified owner allowlist. A token whose address is both verified by
+ * the provider (Google sign-in) and listed here belongs to the desk owner, and
+ * provision grants it the admin claim - so the owner signs in with the same
+ * Google button as everyone else and lands straight on the dashboard while the
+ * public still pays. An email/password account merely claiming the address is
+ * unverified and never matches, and nothing here moves money or membership.
+ * Override or extend via OWNER_EMAILS (comma-separated).
+ */
+const OWNER_EMAILS = (process.env.OWNER_EMAILS ?? "mfarisdeni@gmail.com")
+  .split(",")
+  .map((entry) => entry.trim().toLowerCase())
+  .filter(Boolean);
+
 export async function POST(request: Request) {
   const header = request.headers.get("authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : undefined;
@@ -52,12 +66,37 @@ export async function POST(request: Request) {
   }
 
   const db = adminDb();
+  const owner =
+    facts.emailVerified &&
+    OWNER_EMAILS.includes((facts.email ?? "").trim().toLowerCase());
+
   const profileRef = db.collection("users").doc(facts.uid);
   const profile = await profileRef.get();
   const existing = (profile.get("username") as string | null) ?? null;
+
+  // Owner elevation runs even for established profiles: the claim may have
+  // been granted nowhere else yet (the seed script was never run with a key).
+  // Existing claims are merged, never replaced.
+  let elevated = false;
+  if (owner) {
+    const claims =
+      (await adminAuth().getUser(facts.uid)).customClaims ?? {};
+    if (claims.admin !== true) {
+      await adminAuth().setCustomUserClaims(facts.uid, {
+        ...claims,
+        admin: true,
+      });
+      elevated = true;
+      console.warn(`[provision] ${facts.uid}: owner elevation granted`);
+    }
+  }
+
   if (profile.exists && existing) {
+    if (elevated) {
+      await profileRef.set({ role: "admin" }, { merge: true });
+    }
     return NextResponse.json(
-      { ok: true, username: existing, created: false },
+      { ok: true, username: existing, created: false, elevated },
       { headers: { "cache-control": "no-store" } },
     );
   }
@@ -88,6 +127,7 @@ export async function POST(request: Request) {
       email,
       displayName: account.displayName ?? username,
       locale: "en",
+      ...(owner ? { role: "admin" } : null),
       createdAt: FieldValue.serverTimestamp(),
     });
 
@@ -101,14 +141,21 @@ export async function POST(request: Request) {
     ]);
 
     return NextResponse.json(
-      { ok: true, username, created: true },
+      { ok: true, username, created: true, elevated },
       { headers: { "cache-control": "no-store" } },
     );
   }
 
-  await profileRef.set({ username, usernameLower: username }, { merge: true });
+  await profileRef.set(
+    {
+      username,
+      usernameLower: username,
+      ...(owner ? { role: "admin" } : null),
+    },
+    { merge: true },
+  );
   return NextResponse.json(
-    { ok: true, username, created: false },
+    { ok: true, username, created: false, elevated },
     { headers: { "cache-control": "no-store" } },
   );
 }

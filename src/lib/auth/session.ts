@@ -18,6 +18,12 @@ import { adminAuth } from "@/lib/firebase/server";
 export type SessionFacts = {
   uid: string;
   email: string | null;
+  /**
+   * True only when the provider verified the address (Google sign-in). An
+   * email/password account holding someone else's address is unverified, so
+   * this flag - never the address alone - is what identity decisions use.
+   */
+  emailVerified: boolean;
   username: string | null;
   isAdmin: boolean;
   /** Paid and not expired - the member gate. Admins bypass this. */
@@ -28,6 +34,7 @@ export type SessionFacts = {
 const UNPAID: SessionFacts = {
   uid: "",
   email: null,
+  emailVerified: false,
   username: null,
   isAdmin: false,
   isMember: false,
@@ -49,6 +56,7 @@ export async function sessionFacts(idToken: string | undefined): Promise<Session
     return {
       uid: decoded.uid,
       email: decoded.email ?? null,
+      emailVerified: decoded.email_verified === true,
       username,
       isAdmin: decoded.admin === true,
       isMember: member.active,
