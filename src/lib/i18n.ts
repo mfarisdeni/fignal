@@ -97,16 +97,10 @@ export const MESSAGES = {
   "card.stopLoss": { en: "Stop loss", id: "Stop loss" },
   "card.takeProfit1": { en: "Take profit 1", id: "Take profit 1" },
   "card.takeProfit2": { en: "Take profit 2", id: "Take profit 2" },
-  "card.entryArea": { en: "Entry area", id: "Area entry" },
-  "card.topSetup": { en: "Top setup", id: "Setup unggulan" },
   "card.generated": { en: "Generated {time}", id: "Dibuat {time}" },
   "card.ariaSignal": {
     en: "Signal: {pair} {direction}, status {status}",
     id: "Sinyal: {pair} {direction}, status {status}",
-  },
-  "card.ariaFeatured": {
-    en: "Featured signal: {pair} {direction}",
-    id: "Sinyal unggulan: {pair} {direction}",
   },
 
   /* Empty states */

@@ -36,17 +36,6 @@ export function sortSignalsByConfidence<T extends TradingSignal>(
   });
 }
 
-/** The featured signal is simply the first after confidence sorting. */
-export function splitFeatured(signals: TradingSignal[]): {
-  featured: TradingSignal | null;
-  rest: TradingSignal[];
-} {
-  const sorted = sortSignalsByConfidence(signals).filter(
-    (s) => s.status !== "NO_TRADE",
-  );
-  return { featured: sorted[0] ?? null, rest: sorted.slice(1) };
-}
-
 /* ------------------------------------------------------------------ */
 /* Filtering                                                           */
 /* ------------------------------------------------------------------ */

@@ -1,30 +1,28 @@
 import { NoTradeState } from "./no-trade-state";
 import { SignalCard } from "./signal-card";
-import { SignalFeaturedCard } from "./signal-featured-card";
 import { useLanguage } from "@/hooks/use-language";
 import type { StatusFilter } from "@/lib/signals";
 import type { Market, TradingSignal } from "@/types/signal";
 
 /**
- * Reusable signal list. Receives pre-filtered signals, keeps the featured
- * card on top, renders NO_TRADE records as calm empty-state cards, and
- * resolves every empty combination with a thoughtful state.
+ * Reusable signal list. Receives pre-filtered signals, renders every setup as
+ * the same card (no featured variant), shows NO_TRADE records as calm
+ * empty-state cards, and resolves every empty combination with a thoughtful
+ * state.
  */
 export function SignalList({
-  featured,
-  rest,
+  signals,
   noTrade,
   market,
   status,
 }: {
-  featured: TradingSignal | null;
-  rest: TradingSignal[];
+  signals: TradingSignal[];
   noTrade: TradingSignal[];
   market: Market | "ALL";
   status: StatusFilter;
 }) {
   const { t } = useLanguage();
-  const nothing = !featured && rest.length === 0 && noTrade.length === 0;
+  const nothing = signals.length === 0 && noTrade.length === 0;
 
   if (nothing) {
     if (status === "ACTIVE") {
@@ -44,13 +42,11 @@ export function SignalList({
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      {featured && <SignalFeaturedCard signal={featured} />}
-
       {/* One card per row on mobile, two per row on desktop. */}
-      {rest.length > 0 && (
+      {signals.length > 0 && (
         <div className="grid grid-cols-1 items-start gap-3 sm:gap-4 lg:grid-cols-2">
-          {rest.map((s, i) => (
-            <SignalCard key={s.id} signal={s} index={i + 1} />
+          {signals.map((s, i) => (
+            <SignalCard key={s.id} signal={s} index={i} />
           ))}
         </div>
       )}

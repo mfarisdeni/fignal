@@ -18,7 +18,7 @@ import {
   filterSignals,
   isResultStatus,
   resolveMarketFilter,
-  splitFeatured,
+  sortSignalsByConfidence,
   summarizeDay,
   summarizePerformance,
 } from "@/lib/signals";
@@ -69,12 +69,13 @@ const summary = useMemo(() => summarizeDay(signals), [signals]);
      latest TP/SL resolutions, then full history. The market pills filter every
      section; lifecycle is structure, not a filter. */
   const live = useMemo(() => {
-    const { featured, rest } = splitFeatured(
+    // One flat list, highest confidence first. There is deliberately no
+    // featured card: every setup renders the same translated SignalCard.
+    const all = sortSignalsByConfidence(
       filterSignals(signals, activeMarket, "ACTIVE"),
-    );
+    ).filter((s) => s.status !== "NO_TRADE");
     return {
-      featured,
-      rest,
+      all,
       noTrade: signals.filter(
         (s) =>
           (activeMarket === "ALL" || s.pair === activeMarket) &&
@@ -148,12 +149,11 @@ const summary = useMemo(() => summarizeDay(signals), [signals]);
                   {t("sections.upcoming")}
                 </h2>
                 <span className="text-xs text-muted-foreground tnum">
-                  {(live.featured ? 1 : 0) + live.rest.length + live.noTrade.length}
+                  {live.all.length + live.noTrade.length}
                 </span>
               </div>
               <SignalList
-                featured={live.featured}
-                rest={live.rest}
+                signals={live.all}
                 noTrade={live.noTrade}
                 market={activeMarket}
                 status="ACTIVE"
