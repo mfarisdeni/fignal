@@ -137,5 +137,26 @@ export function useAnalyses() {
     setRecords(loadAnalyses());
   }, []);
 
-  return { records, submit, setStatus, remove, pending, error };
+  /**
+   * Retry the Indonesian translation for a published signal. The id must be
+   * the Firestore document id (remapped at publish time); a local-only record
+   * has nothing server-side to translate and the endpoint 404s.
+   */
+  const translate = useCallback(async (id: string) => {
+    const response = await fetch(
+      `/api/signals/${encodeURIComponent(id)}/translate`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", ...(await authHeaders()) },
+      },
+    );
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as
+        | { error: string }
+        | null;
+      throw new Error(payload?.error ?? "Translation failed.");
+    }
+  }, []);
+
+  return { records, submit, setStatus, remove, translate, pending, error };
 }

@@ -45,7 +45,7 @@ function describe(record: AnalysisRecord, t: Translate): string {
  */
 export function AdminDashboard() {
   const { isUnlocked, lock } = useAdminAuth();
-  const { records, submit, setStatus, remove, pending, error } = useAnalyses();
+  const { records, submit, setStatus, remove, translate, pending, error } = useAnalyses();
   const { t } = useLanguage();
   const [notice, setNotice] = useState<{ id: string; text: string } | null>(null);
 
@@ -160,6 +160,7 @@ export function AdminDashboard() {
                   index={index}
                   onStatusChange={setStatus}
                   onRemove={remove}
+                  onTranslate={translate}
                 />
               ))
             )}

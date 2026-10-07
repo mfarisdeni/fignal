@@ -120,8 +120,8 @@ export function AuthGate() {
 
   function onGoogle() {
     void attempt(() => signInWithGoogle(), {
-      notice: "Signed in with Google.",
-      toast: "Signed in — complete payment to activate.",
+      notice: t("auth.signedInGoogle"),
+      toast: t("auth.toastPaywall"),
     });
   }
 
@@ -138,15 +138,15 @@ export function AuthGate() {
         return;
       }
       void attempt(() => signUpWithEmail(email, password), {
-        notice: "Account created. Complete payment to activate Platinum.",
-        toast: "Account created — complete payment to activate.",
+        notice: t("auth.created"),
+        toast: t("auth.toastCreated"),
       });
       return;
     }
 
     void attempt(() => signInWithEmail(email, password), {
-      notice: "Signed in.",
-      toast: "Signed in — complete payment to activate.",
+      notice: t("auth.signedIn"),
+      toast: t("auth.toastPaywall"),
     });
   }
 
@@ -159,7 +159,7 @@ export function AuthGate() {
       .then(() => {
         setShowReset(false);
         // Deliberately the same whether or not the address has an account.
-        setNotice("If that address has an account, a reset link is on its way.");
+        setNotice(t("auth.resetSent"));
       })
       .catch((caught: unknown) => {
         const message =
@@ -202,21 +202,20 @@ export function AuthGate() {
 
         <h1 className="mt-5 text-xl font-semibold tracking-tight">
           {mode === "register"
-            ? "Create your account"
+            ? t("auth.createTitle")
             : mode === "pending"
-              ? "Payment required"
+              ? t("pay.required")
               : t("auth.title")}
         </h1>
 
         {mode === "pending" ? (
           <>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              You are signed in as{" "}
+              {t("pay.signedInAs")}{" "}
               <span className="font-medium text-foreground">
                 {session.username ?? session.email}
               </span>
-              . Your account is active; Platinum access unlocks once your payment
-              is verified.
+              . {t("pay.pendingBody")}
             </p>
             {notice && (
               <p className="mt-3 rounded-lg border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
@@ -230,7 +229,7 @@ export function AuthGate() {
           <>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               {mode === "register"
-                ? "One account for everything. Google or email - no username to invent."
+                ? t("auth.createSubtitle")
                 : t("auth.subtitle")}
             </p>
 
@@ -248,7 +247,7 @@ export function AuthGate() {
 
               <div className="my-4 flex items-center gap-3 text-[11px] text-muted-foreground">
                 <span className="h-px flex-1 bg-border" aria-hidden="true" />
-                or continue with email
+                {t("auth.orEmail")}
                 <span className="h-px flex-1 bg-border" aria-hidden="true" />
               </div>
             </div>
@@ -276,7 +275,7 @@ export function AuthGate() {
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {tab === "signIn" ? t("auth.signIn") : "Register"}
+                  {tab === "signIn" ? t("auth.signIn") : t("auth.registerTab")}
                 </button>
               ))}
             </div>
@@ -284,7 +283,7 @@ export function AuthGate() {
             <form onSubmit={onEmailAuth} className="mt-4 space-y-3 text-left">
               <label className="block space-y-1.5">
                 <span className="text-xs font-medium text-muted-foreground">
-                  Email
+                  {t("auth.emailLabel")}
                 </span>
                 <input
                   name="email"
@@ -297,7 +296,7 @@ export function AuthGate() {
 
               <label className="block space-y-1.5">
                 <span className="text-xs font-medium text-muted-foreground">
-                  Password
+                  {t("auth.passwordLabel")}
                 </span>
                 <input
                   name="password"
@@ -318,9 +317,9 @@ export function AuthGate() {
 
               <Button type="submit" disabled={busy} className="w-full rounded-full">
                 {busy
-                  ? "Working..."
+                  ? t("auth.working")
                   : mode === "register"
-                    ? "Create account"
+                    ? t("auth.createButton")
                     : t("auth.signIn")}
               </Button>
             </form>
@@ -337,12 +336,12 @@ export function AuthGate() {
                       type="email"
                       autoComplete="email"
                       required
-                      placeholder="Email address"
-                      aria-label="Email address for the reset link"
+                      placeholder={t("auth.resetPlaceholder")}
+                      aria-label={t("auth.resetAria")}
                       className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
                     <Button type="submit" size="sm" className="shrink-0 rounded-full">
-                      Send link
+                      {t("auth.sendLink")}
                     </Button>
                   </form>
                 ) : (
@@ -351,12 +350,12 @@ export function AuthGate() {
                     onClick={() => setShowReset(true)}
                     className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
                   >
-                    Forgot password
+                    {t("auth.forgot")}
                   </button>
                 )
               ) : (
                 <span className="text-muted-foreground">
-                  Rp10.000 to activate after signup
+                  {t("auth.activateNote")}
                 </span>
               )}
             </div>

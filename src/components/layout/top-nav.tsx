@@ -114,9 +114,15 @@ export function TopNav({
   view: DashboardView;
   onViewChange: (v: DashboardView) => void;
 }) {
-  const { signOut } = useAuth();
+  const { session, signOut } = useAuth();
   const { t } = useLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // The member's own identity, not a placeholder: username on top, address
+  // below it, initials in the avatar.
+  const displayName = session.username ?? session.email ?? "";
+  const initials =
+    displayName.replace(/[^a-zA-Z]/g, "").slice(0, 2).toUpperCase() || "?";
 
   const go = (v: DashboardView) => {
     onViewChange(v);
@@ -207,15 +213,19 @@ export function TopNav({
                 aria-label={t("nav.account")}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-[11px] font-semibold text-background transition-transform duration-150 hover:scale-[1.04]"
               >
-                FM
+                {initials}
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 bg-card">
               <DropdownMenuLabel className="font-normal">
-                <div className="text-sm font-medium">{t("nav.member")}</div>
-                <div className="text-xs text-muted-foreground">
-                  member@fignal.id
+                <div className="text-sm font-medium">
+                  {displayName || t("nav.member")}
                 </div>
+                {session.email && session.email !== displayName && (
+                  <div className="text-xs text-muted-foreground">
+                    {session.email}
+                  </div>
+                )}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={signOut}>

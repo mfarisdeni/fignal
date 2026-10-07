@@ -66,6 +66,13 @@ export function isLiveStatus(status: TradingSignal["status"]): boolean {
   return LIVE_STATUSES.includes(status as SignalStatus);
 }
 
+const RESULT_STATUSES: SignalStatus[] = ["TP1_HIT", "TP2_HIT", "SL_HIT"];
+
+/** Setups that resolved with money decided - the track-record section. */
+export function isResultStatus(status: TradingSignal["status"]): boolean {
+  return RESULT_STATUSES.includes(status as SignalStatus);
+}
+
 /**
  * The markets worth offering as a filter, taken from what the feed actually
  * holds rather than from the registry.

@@ -6,6 +6,7 @@ import { MarketSummary } from "@/components/platinum/market-summary";
 import { PlatinumHeader } from "@/components/platinum/platinum-header";
 import { RecentHistory } from "@/components/platinum/recent-history";
 import { RiskNotice } from "@/components/platinum/risk-notice";
+import { SignalCard } from "@/components/platinum/signal-card";
 import { SignalFilters } from "@/components/platinum/signal-filters";
 import { SignalList } from "@/components/platinum/signal-list";
 import { DashboardSkeleton } from "@/components/platinum/skeletons";
@@ -15,11 +16,11 @@ import { useSignals } from "@/hooks/use-signals";
 import {
   availableMarkets,
   filterSignals,
+  isResultStatus,
   resolveMarketFilter,
   splitFeatured,
   summarizeDay,
   summarizePerformance,
-  type StatusFilter,
 } from "@/lib/signals";
 import type { Market } from "@/types/signal";
 
@@ -52,7 +53,6 @@ export function PlatinumDashboard() {
 
   const [view, setView] = useState<DashboardView>("signals");
   const [market, setMarket] = useState<Market | "ALL">("ALL");
-  const [status, setStatus] = useState<StatusFilter>("ALL");
 
 const summary = useMemo(() => summarizeDay(signals), [signals]);
 
@@ -65,15 +65,40 @@ const summary = useMemo(() => summarizeDay(signals), [signals]);
      applied is resolved, not assumed. */
   const activeMarket = resolveMarketFilter(markets, market);
 
-  const { featured, rest, noTrade } = useMemo(() => {
-    const filtered = filterSignals(signals, activeMarket, status);
-    const { featured, rest } = splitFeatured(filtered);
+  /* Three fixed sections, most actionable first: upcoming setups, the
+     latest TP/SL resolutions, then full history. The market pills filter every
+     section; lifecycle is structure, not a filter. */
+  const live = useMemo(() => {
+    const { featured, rest } = splitFeatured(
+      filterSignals(signals, activeMarket, "ACTIVE"),
+    );
     return {
       featured,
       rest,
-      noTrade: filtered.filter((s) => s.status === "NO_TRADE"),
+      noTrade: signals.filter(
+        (s) =>
+          (activeMarket === "ALL" || s.pair === activeMarket) &&
+          s.status === "NO_TRADE",
+      ),
     };
-  }, [signals, activeMarket, status]);
+  }, [signals, activeMarket]);
+
+  const results = useMemo(
+    () =>
+      signals
+        .filter(
+          (s) =>
+            (activeMarket === "ALL" || s.pair === activeMarket) &&
+            isResultStatus(s.status),
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.generatedAt).getTime() -
+            new Date(a.generatedAt).getTime(),
+        )
+        .slice(0, 5),
+    [signals, activeMarket],
+  );
 
   if (!hasAccess) return <AuthGate />;
 
@@ -110,22 +135,52 @@ const summary = useMemo(() => summarizeDay(signals), [signals]);
 
             {/* Sticky filter bar on mobile for thumb reach */}
             <div className="sticky top-14 z-20 -mx-4 bg-background/90 px-0 py-2 backdrop-blur-md sm:static sm:mx-0 sm:bg-transparent sm:py-0 sm:backdrop-blur-none">
-<SignalFilters
+              <SignalFilters
                 markets={markets}
                 market={activeMarket}
-                status={status}
                 onMarketChange={setMarket}
-                onStatusChange={setStatus}
               />
             </div>
 
-            <SignalList
-              featured={featured}
-              rest={rest}
-noTrade={noTrade}
-              market={activeMarket}
-              status={status}
-            />
+            <section aria-label={t("sections.upcoming")}>
+              <div className="mb-3 flex items-baseline justify-between">
+                <h2 className="text-sm font-semibold tracking-tight">
+                  {t("sections.upcoming")}
+                </h2>
+                <span className="text-xs text-muted-foreground tnum">
+                  {(live.featured ? 1 : 0) + live.rest.length + live.noTrade.length}
+                </span>
+              </div>
+              <SignalList
+                featured={live.featured}
+                rest={live.rest}
+                noTrade={live.noTrade}
+                market={activeMarket}
+                status="ACTIVE"
+              />
+            </section>
+
+            {results.length > 0 && (
+              <section aria-label={t("sections.results")}>
+                <div className="mb-3 flex items-baseline justify-between">
+                  <h2 className="text-sm font-semibold tracking-tight">
+                    {t("sections.results")}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setView("history")}
+                    className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {t("history.viewAll")}
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 items-start gap-3 sm:gap-4 lg:grid-cols-2">
+                  {results.map((s, i) => (
+                    <SignalCard key={s.id} signal={s} index={i} />
+                  ))}
+                </div>
+              </section>
+            )}
 
             <section aria-label={t("history.title")}>
               <div className="mb-3 flex items-baseline justify-between">

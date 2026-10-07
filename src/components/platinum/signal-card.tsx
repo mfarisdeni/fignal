@@ -16,7 +16,7 @@ export function SignalCard({
   signal,
   index = 0,
 }: {
-  signal: TradingSignal;
+  signal: TradingSignal & { reasonId?: string | null };
   index?: number;
 }) {
   const { language, t } = useLanguage();
@@ -46,7 +46,11 @@ export function SignalCard({
           </div>
         </div>
 
-        <SignalReason reason={signal.reason} className="mt-2.5" />
+        <SignalReason
+          reason={signal.reason}
+          reasonId={signal.reasonId}
+          className="mt-2.5"
+        />
 
         <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
           <PriceMetric

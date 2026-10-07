@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, QrCode } from "lucide-react";
 import { authHeaders, useAuth } from "@/hooks/use-auth";
+import { useLanguage } from "@/hooks/use-language";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -35,6 +36,7 @@ type Order = {
 
 export function PaymentPanel() {
   const { refreshClaims } = useAuth();
+  const { t } = useLanguage();
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(false);
@@ -56,16 +58,16 @@ export function PaymentPanel() {
 
       if (!response.ok || !payload || "error" in payload) {
         throw new Error(
-          payload && "error" in payload ? payload.error : "Could not start the payment.",
+          payload && "error" in payload ? payload.error : t("pay.startFail"),
         );
       }
       setOrder(payload);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not start the payment.");
+      setError(caught instanceof Error ? caught.message : t("pay.startFail"));
     } finally {
       setStarting(false);
     }
-  }, []);
+  }, [t]);
 
   /**
    * Poll until the webhook marks the order paid, then pull fresh claims so the
@@ -115,9 +117,9 @@ export function PaymentPanel() {
     return (
       <div className="mt-6 rounded-xl border border-border bg-card p-5 text-center">
         <CheckCircle2 className="mx-auto h-7 w-7 text-buy" aria-hidden="true" />
-        <p className="mt-3 text-sm font-semibold">Payment received</p>
+        <p className="mt-3 text-sm font-semibold">{t("pay.received")}</p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Your Platinum access is active. Reload the dashboard to load the feed.
+          {t("pay.receivedSub")}
         </p>
       </div>
     );
@@ -132,7 +134,7 @@ export function PaymentPanel() {
         <span className="text-xl font-semibold tnum">{rupiah.format(PRICE)}</span>
       </div>
       <p className="mt-1 text-center text-[11px] font-medium text-buy">
-        50% off - first month
+        {t("pay.promo")}
       </p>
 
       {error && (
@@ -150,12 +152,12 @@ export function PaymentPanel() {
           {starting ? (
             <>
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              Preparing QRIS...
+              {t("pay.preparing")}
             </>
           ) : (
             <>
               <QrCode className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-              Pay {rupiah.format(PRICE)} with QRIS
+              {t("pay.pay")} {rupiah.format(PRICE)} {t("pay.withQris")}
             </>
           )}
         </Button>
@@ -175,13 +177,13 @@ export function PaymentPanel() {
                 href={order.qrisUrl}
                 className="text-sm font-medium underline underline-offset-4"
               >
-                Open the QRIS code
+                {t("pay.openCode")}
               </a>
             )
           )}
 
           <p className="mt-3 text-xs text-muted-foreground">
-            Scanning with any QRIS app. This page updates on its own.
+            {t("pay.scanNote")}
           </p>
           <p className="mt-1 font-mono-num text-[11px] text-muted-foreground tnum">
             {order.orderId}

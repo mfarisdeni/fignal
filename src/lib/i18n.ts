@@ -145,6 +145,77 @@ export const MESSAGES = {
   },
   "history.ungraded": { en: "Ungraded", id: "Tanpa grade" },
 
+  /* Dashboard sections */
+  "sections.upcoming": { en: "Upcoming signals", id: "Sinyal mendatang" },
+  "sections.results": { en: "TP & SL hits", id: "TP & SL kena" },
+
+  /* Desk translation */
+  "admin.translate": { en: "Translate to Indonesian", id: "Terjemahkan ke Indonesia" },
+  "admin.translateDone": { en: "Translation updated.", id: "Terjemahan diperbarui." },
+  "admin.translateFail": { en: "Translation failed. Try again.", id: "Terjemahan gagal. Coba lagi." },
+
+  /* Payment */
+  "pay.startFail": { en: "Could not start the payment.", id: "Tidak dapat memulai pembayaran." },
+  "pay.received": { en: "Payment received", id: "Pembayaran diterima" },
+  "pay.receivedSub": {
+    en: "Your Platinum access is active. Reload the dashboard to load the feed.",
+    id: "Akses Platinum Anda aktif. Muat ulang dasbor untuk memuat feed.",
+  },
+  "pay.promo": { en: "50% off - first month", id: "Diskon 50% - bulan pertama" },
+  "pay.preparing": { en: "Preparing QRIS...", id: "Menyiapkan QRIS..." },
+  "pay.pay": { en: "Pay", id: "Bayar" },
+  "pay.withQris": { en: "with QRIS", id: "dengan QRIS" },
+  "pay.openCode": { en: "Open the QRIS code", id: "Buka kode QRIS" },
+  "pay.scanNote": {
+    en: "Scanning with any QRIS app. This page updates on its own.",
+    id: "Pindai dengan aplikasi QRIS apa pun. Halaman ini diperbarui otomatis.",
+  },
+  "pay.required": { en: "Payment required", id: "Pembayaran diperlukan" },
+  "pay.signedInAs": { en: "You are signed in as", id: "Anda masuk sebagai" },
+  "pay.pendingBody": {
+    en: "Your account is active; Platinum access unlocks once your payment is verified.",
+    id: "Akun Anda aktif; akses Platinum terbuka setelah pembayaran terverifikasi.",
+  },
+
+  /* Gate form */
+  "auth.createTitle": { en: "Create your account", id: "Buat akun Anda" },
+  "auth.createSubtitle": {
+    en: "One account for everything. Google or email - no username to invent.",
+    id: "Satu akun untuk semua. Google atau email - tanpa perlu username.",
+  },
+  "auth.registerTab": { en: "Register", id: "Daftar" },
+  "auth.emailLabel": { en: "Email", id: "Email" },
+  "auth.passwordLabel": { en: "Password", id: "Kata sandi" },
+  "auth.createButton": { en: "Create account", id: "Buat akun" },
+  "auth.working": { en: "Working...", id: "Memproses..." },
+  "auth.orEmail": { en: "or continue with email", id: "atau lanjutkan dengan email" },
+  "auth.forgot": { en: "Forgot password", id: "Lupa kata sandi" },
+  "auth.resetPlaceholder": { en: "Email address", id: "Alamat email" },
+  "auth.resetAria": { en: "Email address for the reset link", id: "Alamat email untuk tautan reset" },
+  "auth.sendLink": { en: "Send link", id: "Kirim tautan" },
+  "auth.activateNote": {
+    en: "Rp10.000 to activate after signup",
+    id: "Rp10.000 untuk aktivasi setelah daftar",
+  },
+  "auth.signedIn": { en: "Signed in.", id: "Sudah masuk." },
+  "auth.signedInGoogle": { en: "Signed in with Google.", id: "Masuk dengan Google." },
+  "auth.created": {
+    en: "Account created. Complete payment to activate Platinum.",
+    id: "Akun dibuat. Selesaikan pembayaran untuk mengaktifkan Platinum.",
+  },
+  "auth.toastPaywall": {
+    en: "Signed in — complete payment to activate.",
+    id: "Sudah masuk — selesaikan pembayaran untuk aktivasi.",
+  },
+  "auth.toastCreated": {
+    en: "Account created — complete payment to activate.",
+    id: "Akun dibuat — selesaikan pembayaran untuk aktivasi.",
+  },
+  "auth.resetSent": {
+    en: "If that address has an account, a reset link is on its way.",
+    id: "Jika alamat itu terdaftar, tautan reset sedang dikirim.",
+  },
+
   /* Risk notice */
   "risk.title": { en: "Risk notice.", id: "Catatan risiko." },
   "risk.body": {

@@ -1,5 +1,6 @@
-import { useMemo } from "react";
-import { TriangleAlert, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Languages, TriangleAlert, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { ConfidenceBadge } from "@/components/platinum/confidence-badge";
 import { DirectionBadge } from "@/components/platinum/direction-badge";
 import { PriceMetric } from "@/components/platinum/price-metric";
@@ -71,13 +72,29 @@ export function AnalysisRecordCard({
   index = 0,
   onStatusChange,
   onRemove,
+  onTranslate,
 }: {
   record: AnalysisRecord;
   index?: number;
   onStatusChange: (id: string, status: SignalStatus) => void;
   onRemove: (id: string) => void;
+  onTranslate: (id: string) => Promise<void>;
 }) {
   const { language, t } = useLanguage();
+  const [translating, setTranslating] = useState(false);
+
+  async function handleTranslate() {
+    if (translating) return;
+    setTranslating(true);
+    try {
+      await onTranslate(record.id);
+      toast.success(t("admin.translateDone"));
+    } catch {
+      toast.error(t("admin.translateFail"));
+    } finally {
+      setTranslating(false);
+    }
+  }
   const signal = useMemo(() => analysisToSignal(record), [record]);
   const side =
     record.direction === "BUY" || record.direction === "SELL"
@@ -220,7 +237,17 @@ const missing = record.missing
           </Select>
         </label>
 
-        <span className="ml-auto text-xs text-muted-foreground tnum">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => void handleTranslate()}
+          disabled={translating}
+          className="ml-auto h-7 rounded-full px-2.5 text-xs text-muted-foreground"
+        >
+          <Languages className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+          {translating ? "…" : t("admin.translate")}
+        </Button>
+        <span className="text-xs text-muted-foreground tnum">
           {formatDateShort(record.submittedAt, language)} · {formatTimeWIB(record.submittedAt, language)}
         </span>
       </div>

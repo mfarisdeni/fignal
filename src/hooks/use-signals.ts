@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { subscribeToSignals } from "@/lib/signals/feed";
 import { closedHistory } from "@/lib/signals";
-import type { TradingSignal } from "@/types/signal";
+import type { SignalDocument } from "@/lib/signals/schema";
 
 /**
  * Data-fetching hook consumed by the dashboard.
@@ -15,7 +15,9 @@ import type { TradingSignal } from "@/types/signal";
  * two cannot drift apart.
  */
 export function useSignals() {
-  const [signals, setSignals] = useState<TradingSignal[]>([]);
+  // SignalDocument, not TradingSignal: the cards need the stored Indonesian
+  // reason (reasonId) alongside the English original.
+  const [signals, setSignals] = useState<SignalDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);

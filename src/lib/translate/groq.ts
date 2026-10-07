@@ -47,7 +47,10 @@ export async function translateToIndonesian(
     /\/+$/,
     "",
   );
-  const model = process.env.GROQ_MODEL ?? "openai/gpt-oss-120b";
+  // gpt-oss-20b is the default: translation runs inside the publish request,
+  // so the fastest adequate model wins. Override with GROQ_MODEL
+  // (e.g. openai/gpt-oss-120b, qwen/qwen3-32b) without a code change.
+  const model = process.env.GROQ_MODEL ?? "openai/gpt-oss-20b";
 
   try {
     const response = await fetch(`${base}/chat/completions`, {

@@ -17,7 +17,7 @@ export function SignalFeaturedCard({
   signal,
   className,
 }: {
-  signal: TradingSignal;
+  signal: TradingSignal & { reasonId?: string | null };
   className?: string;
 }) {
   const { language, t } = useLanguage();
@@ -55,7 +55,11 @@ export function SignalFeaturedCard({
           </div>
         </div>
 
-        <SignalReason reason={signal.reason} className="mt-3" />
+        <SignalReason
+          reason={signal.reason}
+          reasonId={signal.reasonId}
+          className="mt-3"
+        />
 
         {/* Entry area - the single most important value */}
         <div
