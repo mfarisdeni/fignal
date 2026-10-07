@@ -703,14 +703,16 @@ function firstSentence(text: string | undefined, limit = 180): string | undefine
 /**
  * A card shows one rationale line, so the decision and the sniper trigger are
  * folded in ahead of the analyst's own reasoning: a member must know this is
- * a wait, not a market order, before reading the numbers.
+ * a wait, not a market order, before reading the numbers. Comma-joined as one
+ * straight paragraph - no bullets, no line breaks. Empty parts are dropped so
+ * a missing decision never leaves a leading comma.
  */
 function buildReason(record: AnalysisRecord): string | undefined {
   const parts = [decisionLabel(record)];
   if (record.sniper) parts.push(record.sniper);
   const why = firstSentence(record.reason);
   if (why) parts.push(why);
-  return parts.join(" · ");
+  return parts.filter((part): part is string => !!part).join(", ");
 }
 
 /** Shape a stored record into the signal the member dashboard renders. */
