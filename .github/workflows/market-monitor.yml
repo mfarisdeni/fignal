@@ -1,0 +1,33 @@
+# Ticks Fignal's market monitor on the free-plan schedule (see the budget note
+# in src/lib/market/twelvedata.ts): every 10 min in the quiet window, every 6
+# min otherwise - 220 ticks x 3 symbols = 660 Twelve Data credits/day.
+#
+# GitHub Actions is the scheduler because this project is on Vercel Hobby, and
+# Hobby cron is daily-only: any sub-daily entry in vercel.json FAILS the deploy
+# ("Hobby accounts are limited to daily cron jobs"). This repo is public, so
+# Actions minutes are unlimited and free.
+#
+# Setup (once): repo Settings -> Secrets and variables -> Actions -> New secret
+#   Name: CRON_SECRET   Value: <same value as Vercel's CRON_SECRET>
+# Without it every tick answers 401 and the step fails loudly - by design.
+#
+# Times are UTC. Quiet window 02:00-07:00 UTC = 09:00-14:00 WIB.
+name: market-monitor
+
+on:
+  schedule:
+    - cron: "*/10 2-6 * * *" # quiet: every 10 min, 09:00-14:00 WIB
+    - cron: "*/6 7-23 * * *" # active: every 6 min
+    - cron: "*/6 0-1 * * *" # active: every 6 min (past midnight UTC)
+  workflow_dispatch: {} # manual "Run workflow" button for testing
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Tick the market monitor
+        run: |
+          curl --fail --max-time 90 -sS \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://fignal-coral.vercel.app/api/cron/market-monitor
