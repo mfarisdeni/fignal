@@ -24,6 +24,19 @@ import {
 import type { Market } from "@/types/signal";
 
 /**
+ * Feed failures translated for display. A refusal almost always means the
+ * account has no readable membership (or the rules were never published), so
+ * it says that instead of a raw permission error. Firestore messages carry no
+ * secrets, so the fallback is safe to show.
+ */
+function feedErrorText(error: Error): string {
+  if (/permission-denied|insufficient permissions/i.test(error.message)) {
+    return "Access to the feed was refused. If you just signed in or paid, wait a few seconds and reload.";
+  }
+  return error.message;
+}
+
+/**
  * Fignal Platinum dashboard — /platinum
  *
  * The page consumes structured signal objects only. It knows nothing about
@@ -34,7 +47,7 @@ export function PlatinumDashboard() {
   // access. Only a paid membership (or the desk itself) opens this route - the
   // gate below also serves the checkout for accounts that have not paid yet.
   const { hasAccess } = useAuth();
-  const { signals, history, loading, updatedAt } = useSignals();
+  const { signals, history, loading, error, updatedAt } = useSignals();
   const { t } = useLanguage();
 
   const [view, setView] = useState<DashboardView>("signals");
@@ -78,6 +91,18 @@ const summary = useMemo(() => summarizeDay(signals), [signals]);
         {loading ? (
           <div className="mt-6">
             <DashboardSkeleton />
+          </div>
+        ) : error && signals.length === 0 ? (
+          <div
+            role="alert"
+            className="mt-6 rounded-xl border border-destructive/30 bg-destructive/10 p-5 text-center"
+          >
+            <p className="text-sm font-semibold text-destructive">
+              Could not load the feed
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              {feedErrorText(error)}
+            </p>
           </div>
         ) : view === "signals" ? (
           <div className="mt-6 space-y-6">
