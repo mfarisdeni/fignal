@@ -74,12 +74,19 @@ export async function POST(request: Request) {
 
   // Reuse a live pending order instead of stacking QRIS codes on a member who
   // simply reopened the page. Clicks are cheap; merchant QRIS quotas are not.
-  const openOrder = await findReusableOrder(db, facts.uid);
+  // Reuse is an optimization, not correctness: if the lookup throws (a missing
+  // composite index throws FAILED_PRECONDITION on a fresh project), fall
+  // through and create instead of failing the payment.
+  let openOrder = null;
+  try {
+    openOrder = await findReusableOrder(db, facts.uid);
+  } catch (error) {
+    console.error("[payments] reusable-order lookup failed, creating", error);
+  }
   if (openOrder) {
     return NextResponse.json(openOrder, { headers: { "cache-control": "no-store" } });
   }
 
-  const cfg = klikQris();
   const orderId = newOrderId();
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(
     /\/+$/,
@@ -87,6 +94,9 @@ export async function POST(request: Request) {
   );
 
   try {
+    // Inside the try on purpose: missing KlikQRIS config throws here, and a
+    // JSON 502 with a display-safe message beats a 500 page the UI cannot read.
+    const cfg = klikQris();
     const response = await fetch(`${cfg.base}/qris/create`, {
       method: "POST",
       headers: {
