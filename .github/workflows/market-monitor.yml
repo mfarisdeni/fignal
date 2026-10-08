@@ -1,11 +1,19 @@
 # Ticks Fignal's market monitor on the free-plan schedule (see the budget note
-# in src/lib/market/twelvedata.ts): every 10 min in the quiet window, every 6
-# min otherwise - 220 ticks x 3 symbols = 660 Twelve Data credits/day.
+# in src/lib/market/twelvedata.ts): every 15 min in the quiet window, every 9
+# min otherwise - ~153 ticks x 4 symbols = ~612 Twelve Data credits/day (~77%
+# of the free 800/day, with margin for retries).
 #
 # GitHub Actions is the scheduler because this project is on Vercel Hobby, and
 # Hobby cron is daily-only: any sub-daily entry in vercel.json FAILS the deploy
 # ("Hobby accounts are limited to daily cron jobs"). This repo is public, so
 # Actions minutes are unlimited and free.
+#
+# GitHub's scheduler is best-effort: it can delay or drop slots (this repo once
+# saw 4 runs in 22h with everything green). If ticks go sparse again, aim any
+# external cron (cron-job.org, UptimeRobot, ...) at the same endpoint below
+# with `Authorization: Bearer <CRON_SECRET>` on the same cadence - the
+# Firestore lease makes overlapping ticks safe, so the two tickers back each
+# other up instead of double-spending credits.
 #
 # Setup (once): repo Settings -> Secrets and variables -> Actions -> New secret
 #   Name: CRON_SECRET   Value: <same value as Vercel's CRON_SECRET>
@@ -16,9 +24,9 @@ name: market-monitor
 
 on:
   schedule:
-    - cron: "*/10 2-6 * * *" # quiet: every 10 min, 09:00-14:00 WIB
-    - cron: "*/6 7-23 * * *" # active: every 6 min
-    - cron: "*/6 0-1 * * *" # active: every 6 min (past midnight UTC)
+    - cron: "*/15 2-6 * * *" # quiet: every 15 min, 09:00-14:00 WIB (4/hr x 5h = 20)
+    - cron: "*/9 7-23 * * *" # active: every 9 min (7/hr x 17h = 119)
+    - cron: "*/9 0-1 * * *" # active: every 9 min past midnight UTC (7/hr x 2h = 14)
   workflow_dispatch: {} # manual "Run workflow" button for testing
 
 jobs:

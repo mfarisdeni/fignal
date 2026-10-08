@@ -5,13 +5,13 @@ import { runMarketMonitor } from "@/lib/market/monitor";
 
 /**
  * GET /api/cron/market-monitor - our GitHub Actions workflow
- * (.github/workflows/market-monitor.yml) ticks this: every 10 minutes in the
- * quiet window (09:00-14:00 WIB = 02:00-07:00 UTC), every 6 minutes otherwise.
+ * (.github/workflows/market-monitor.yml) ticks this: every 15 minutes in the
+ * quiet window (09:00-14:00 WIB = 02:00-07:00 UTC), every 9 minutes otherwise.
  * Each tick prices the live signals' symbols once via Twelve Data and moves
- * UPCOMING -> ACTIVE -> TP/SL deterministically. 220 ticks x 3 symbols = 660
- * Twelve Data credits/day, inside the 800/day free plan with margin for
- * retries. GitHub - not Vercel Cron - is the scheduler because Hobby cron is
- * daily-only and sub-daily vercel.json entries fail the deploy.
+ * UPCOMING -> ACTIVE -> TP/SL deterministically. ~153 ticks x 4 symbols =
+ * ~612 Twelve Data credits/day, ~77% of the 800/day free plan, with margin
+ * for retries. GitHub - not Vercel Cron - is the scheduler because Hobby cron
+ * is daily-only and sub-daily vercel.json entries fail the deploy.
  *
  * No rate limiter on purpose, same reasoning as the payment webhook: the
  * caller is our own GitHub Actions workflow, not a user, and a false-positive

@@ -21,15 +21,18 @@ export const TWELVE_DATA_TIMEOUT_MS = 8_000;
  * for it - but the live symbol-search check is still owed, so if NDX ever
  * answers "symbol not found", this map is the one line to change.
  *
- * BTCUSD is deliberately NOT here: at 3 symbols x 220 ticks/day the free plan
- * (800 credits/day) fits with margin; a fourth symbol would not. Re-add one
- * line (`BTCUSD: "BTC/USD"`) if the desk moves to a paid Twelve Data plan -
- * the monitor picks it up with no other change.
+ * Budget: ~153 ticks/day x 4 symbols = ~612 credits/day, ~77% of the free
+ * plan's 800/day, with margin left for retries and error responses (which the
+ * provider still bills). Each tick fires its symbols in parallel - a burst of
+ * 4, inside the 8/minute cap. The daily budget is the binding constraint, not
+ * the minutely one: 6-7 calls a minute around the clock would need 8000+
+ * credits a day. See the schedule in .github/workflows/market-monitor.yml.
  */
 export const TWELVE_SYMBOLS: Record<string, string> = {
   XAUUSD: "XAU/USD",
   EURUSD: "EUR/USD",
   NAS100: "NDX",
+  BTCUSD: "BTC/USD",
 };
 
 /** The provider symbol for a Fignal pair, or null when unsupported. */
