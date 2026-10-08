@@ -35,6 +35,49 @@ export type TranslationResult =
   | { ok: true; text: string }
   | { ok: false; reason: string };
 
+/**
+ * Reasoning families on Groq. A reasoning model spends hidden chain-of-thought
+ * tokens from the same completion budget, so at the default effort it can burn
+ * the whole allowance thinking and come back with empty content and
+ * finish_reason "length" — exactly the "no content" failure. Translation needs
+ * no deep thought, so these models are asked for low effort; anything else
+ * omits the parameter, because a gateway that does not know it rejects the
+ * whole request.
+ */
+const REASONING_MODEL = /gpt-oss|qwen3|deepseek-r1/i;
+
+/** Completion budget with headroom for reasoning plus the longest rationale. */
+const MAX_TOKENS = 4096;
+
+/** Translation must not hang the desk; a slow gateway fails fast instead. */
+const TIMEOUT_MS = 20_000;
+
+/**
+ * The visible answer out of a chat choice. Content is usually a string, but
+ * some gateways return content blocks — joined here so a valid translation is
+ * never reported as missing. The reasoning trace is never an answer: when the
+ * model thought but said nothing, that is a failure with a finish_reason, not
+ * text to show members.
+ */
+function choiceText(choice: unknown): string {
+  const message = (choice as { message?: { content?: unknown } } | null)?.message;
+  const content = message?.content;
+  if (typeof content === "string") return content.trim();
+  if (Array.isArray(content)) {
+    return content
+      .map((part) =>
+        typeof part === "string"
+          ? part
+          : typeof (part as { text?: unknown })?.text === "string"
+            ? ((part as { text: string }).text as string)
+            : "",
+      )
+      .join("")
+      .trim();
+  }
+  return "";
+}
+
 export async function translateToIndonesian(
   english: string,
 ): Promise<TranslationResult> {
@@ -62,14 +105,14 @@ export async function translateToIndonesian(
       body: JSON.stringify({
         model,
         temperature: 0.2,
-        max_tokens: 900,
+        max_tokens: MAX_TOKENS,
+        ...(REASONING_MODEL.test(model) ? { reasoning_effort: "low" } : {}),
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: english },
         ],
       }),
-      // Publish must not hang on a slow gateway; fall back to English instead.
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -78,14 +121,23 @@ export async function translateToIndonesian(
     }
 
     const payload = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
+      choices?: Array<{ message?: { content?: unknown }; finish_reason?: string }>;
     };
-    const text = payload.choices?.[0]?.message?.content?.trim();
+    const choice = payload.choices?.[0];
+    const text = choiceText(choice);
 
-    if (!text) return { ok: false, reason: "Groq returned no content" };
+    if (!text) {
+      // finish_reason is the diagnosis: "length" means the budget ran out
+      // (reasoning ate it), anything else means the model said nothing.
+      const stopped = choice?.finish_reason ?? "unknown";
+      return { ok: false, reason: `Groq returned no content (finish_reason=${stopped})` };
+    }
 
     return { ok: true, text };
   } catch (error) {
+    if (error instanceof DOMException && error.name === "TimeoutError") {
+      return { ok: false, reason: `Groq timed out after ${TIMEOUT_MS / 1000}s — try again` };
+    }
     return {
       ok: false,
       reason: error instanceof Error ? error.message : "translation failed",
