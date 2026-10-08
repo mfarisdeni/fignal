@@ -7,6 +7,7 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { firestore } from "@/lib/firebase/client";
+import { dedupeSignals } from "@/lib/signals";
 import { SIGNALS_COLLECTION, type SignalDocument } from "@/lib/signals/schema";
 
 /**
@@ -54,11 +55,16 @@ export function subscribeToSignals(
   return onSnapshot(
     feed,
     (snapshot) => {
+      // A double publish leaves two identical documents live; members see one
+      // card, and the counts, filters and history all agree on it. The desk
+      // still sees both in /admin and deletes the leftover clone there.
       onData(
-        snapshot.docs.map((doc) => ({
-          ...(doc.data() as SignalDocument),
-          id: doc.id,
-        })),
+        dedupeSignals(
+          snapshot.docs.map((doc) => ({
+            ...(doc.data() as SignalDocument),
+            id: doc.id,
+          })),
+        ),
       );
     },
     (error) => onError(error),

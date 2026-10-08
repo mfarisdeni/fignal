@@ -4,6 +4,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/server";
 import { sessionFacts } from "@/lib/auth/session";
 import { checkRateLimit, rateLimited, serviceUnavailable } from "@/lib/auth/rate-limit";
+import { blocksPublish } from "@/lib/signals";
 import { SIGNALS_COLLECTION } from "@/lib/signals/schema";
 
 /**
@@ -72,6 +73,66 @@ export async function POST(request: Request) {
   }
 
   const input = parsed.data;
+
+  // Refuse a publish that clones a setup members already see: a resubmit
+  // after an error, or the same prompt from a second browser, lands a second
+  // identical document and the dashboard shows the pair twice. A setup counts
+  // as already live even after the monitor moved it a step (UPCOMING ->
+  // ACTIVE), but a resolved or expired twin never blocks a fresh publish.
+  // Pair-only filter, no ordering: a single-field query needs no composite
+  // index, and the newest 25 of one pair are plenty to catch a clone.
+  const twins = await adminDb()
+    .collection(SIGNALS_COLLECTION)
+    .where("pair", "==", input.pair)
+    .limit(25)
+    .get();
+  const liveClone = twins.docs.some((twin) => {
+    const stored = twin.data() as {
+      status?: string;
+      direction?: "BUY" | "SELL" | "NO_TRADE";
+      confidence?: string | null;
+      entryMin?: number | null;
+      entryMax?: number | null;
+      sl?: number | null;
+      tp1?: number | null;
+      tp2?: number | null;
+      reason?: string | null;
+    };
+    return blocksPublish(
+      {
+        status: stored.status ?? "",
+        pair: input.pair,
+        direction: stored.direction ?? "NO_TRADE",
+        confidence: stored.confidence ?? null,
+        entryMin: stored.entryMin ?? null,
+        entryMax: stored.entryMax ?? null,
+        sl: stored.sl ?? null,
+        tp1: stored.tp1 ?? null,
+        tp2: stored.tp2 ?? null,
+        reason: stored.reason ?? null,
+      },
+      {
+        status: input.status,
+        pair: input.pair,
+        direction: input.direction,
+        confidence: input.confidence ?? null,
+        entryMin: input.entryMin ?? null,
+        entryMax: input.entryMax ?? null,
+        sl: input.sl ?? null,
+        tp1: input.tp1 ?? null,
+        tp2: input.tp2 ?? null,
+        reason: input.reason,
+      },
+    );
+  });
+  if (liveClone) {
+    return NextResponse.json(
+      {
+        error: `This ${input.pair} setup is already live — delete the existing one before publishing it again.`,
+      },
+      { status: 409, headers: { "cache-control": "no-store" } },
+    );
+  }
 
   const doc = await adminDb().collection(SIGNALS_COLLECTION).add({
     pair: input.pair,

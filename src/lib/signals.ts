@@ -51,7 +51,7 @@ const DONE_STATUSES: SignalStatus[] = [
   "CANCELLED",
 ];
 
-export function isLiveStatus(status: TradingSignal["status"]): boolean {
+export function isLiveStatus(status: string): boolean {
   return LIVE_STATUSES.includes(status as SignalStatus);
 }
 
@@ -118,6 +118,94 @@ export function filterSignals(
     if (status === "ACTIVE") return isLiveStatus(s.status);
     if (status === "COMPLETED")
       return DONE_STATUSES.includes(s.status as SignalStatus);
+    return true;
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Duplicates                                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The fields that make two publishes of one setup identical. Structural on
+ * purpose: both a stored TradingSignal and the POST /api/signals body satisfy
+ * it, so the feed dedupe and the publish guard share one definition.
+ */
+export type SetupFingerprint = {
+  // string, not Market: the publish body carries the pair unvalidated at the
+  // type level, and the comparison is an equality check either way.
+  pair: string;
+  direction: TradingSignal["direction"];
+  // string, not Confidence: stored grades arrive unvalidated, and the
+  // comparison is an equality check either way.
+  confidence?: string | null;
+  entryMin?: number | null;
+  entryMax?: number | null;
+  sl?: number | null;
+  tp1?: number | null;
+  tp2?: number | null;
+  reason?: string | null;
+};
+
+/**
+ * Same pair, side, grade, levels and rationale — two publishes of one setup.
+ * Status is deliberately NOT part of this: the feed only merges exact clones
+ * (same status), while the publish guard treats an identical setup as already
+ * live even after the monitor moved it a step along its lifecycle.
+ */
+export function isSameSetup(a: SetupFingerprint, b: SetupFingerprint): boolean {
+  return (
+    a.pair === b.pair &&
+    a.direction === b.direction &&
+    (a.confidence ?? null) === (b.confidence ?? null) &&
+    (a.entryMin ?? null) === (b.entryMin ?? null) &&
+    (a.entryMax ?? null) === (b.entryMax ?? null) &&
+    (a.sl ?? null) === (b.sl ?? null) &&
+    (a.tp1 ?? null) === (b.tp1 ?? null) &&
+    (a.tp2 ?? null) === (b.tp2 ?? null) &&
+    (a.reason ?? "") === (b.reason ?? "")
+  );
+}
+
+/**
+ * Whether an incoming publish clones a setup members already see. A twin
+ * counts as already live under its own status, or under any other live status
+ * — the monitor may have moved UPCOMING to ACTIVE since the desk's first
+ * publish. A resolved or expired twin never blocks a fresh setup.
+ */
+export function blocksPublish(
+  stored: SetupFingerprint & { status: string },
+  incoming: SetupFingerprint & { status: string },
+): boolean {
+  const alreadyLive =
+    stored.status === incoming.status ||
+    (isLiveStatus(stored.status) && isLiveStatus(incoming.status));
+  return alreadyLive && isSameSetup(stored, incoming);
+}
+
+/**
+ * Collapse exact clones to the newest of each set.
+ *
+ * A double publish (resubmit after an error, two browsers, a retry the desk
+ * thought had failed) lands two documents with identical content, and the
+ * dashboard would show the same NAS100 card twice. The feed arrives newest
+ * first, so the first of each clone set wins and the input order is preserved.
+ *
+ * Only unresolved signals merge: a resolved TP/SL result is the track record,
+ * and two identical-looking results on different days are two trades, not a
+ * clone. Clones of those are the admin's call to delete, never the feed's to
+ * hide.
+ */
+export function dedupeSignals<T extends TradingSignal>(signals: T[]): T[] {
+  const seen: T[] = [];
+  return signals.filter((signal) => {
+    if (!isLiveStatus(signal.status) && signal.status !== "NO_TRADE")
+      return true;
+    const clone = seen.some(
+      (kept) => kept.status === signal.status && isSameSetup(kept, signal),
+    );
+    if (clone) return false;
+    seen.push(signal);
     return true;
   });
 }
