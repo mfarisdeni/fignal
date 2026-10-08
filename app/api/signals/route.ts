@@ -75,10 +75,11 @@ export async function POST(request: Request) {
   const input = parsed.data;
 
   // Refuse a publish that clones a setup members already see: a resubmit
-  // after an error, or the same prompt from a second browser, lands a second
-  // identical document and the dashboard shows the pair twice. A setup counts
-  // as already live even after the monitor moved it a step (UPCOMING ->
-  // ACTIVE), but a resolved or expired twin never blocks a fresh publish.
+  // after an error, the same prompt from a second browser, or the same setup
+  // republished with translated prose lands a second document for one setup
+  // and the dashboard shows the pair twice. A setup counts as already live
+  // even after the monitor moved it a step (UPCOMING -> ACTIVE), but a
+  // resolved or expired twin never blocks a fresh publish.
   // Pair-only filter, no ordering: a single-field query needs no composite
   // index, and the newest 25 of one pair are plenty to catch a clone.
   const twins = await adminDb()
@@ -96,7 +97,6 @@ export async function POST(request: Request) {
       sl?: number | null;
       tp1?: number | null;
       tp2?: number | null;
-      reason?: string | null;
     };
     return blocksPublish(
       {
@@ -109,7 +109,6 @@ export async function POST(request: Request) {
         sl: stored.sl ?? null,
         tp1: stored.tp1 ?? null,
         tp2: stored.tp2 ?? null,
-        reason: stored.reason ?? null,
       },
       {
         status: input.status,
@@ -121,7 +120,6 @@ export async function POST(request: Request) {
         sl: input.sl ?? null,
         tp1: input.tp1 ?? null,
         tp2: input.tp2 ?? null,
-        reason: input.reason,
       },
     );
   });

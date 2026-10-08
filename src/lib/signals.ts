@@ -130,6 +130,12 @@ export function filterSignals(
  * The fields that make two publishes of one setup identical. Structural on
  * purpose: both a stored TradingSignal and the POST /api/signals body satisfy
  * it, so the feed dedupe and the publish guard share one definition.
+ *
+ * The rationale is deliberately NOT part of this: it is commentary, and it can
+ * be reworded or translated (English publish, then the same setup republished
+ * with the Indonesian text) while the tradeable setup stays identical. Two
+ * live same-status documents with the same numbers are the same setup no
+ * matter which language the prose is in.
  */
 export type SetupFingerprint = {
   // string, not Market: the publish body carries the pair unvalidated at the
@@ -144,14 +150,13 @@ export type SetupFingerprint = {
   sl?: number | null;
   tp1?: number | null;
   tp2?: number | null;
-  reason?: string | null;
 };
 
 /**
- * Same pair, side, grade, levels and rationale — two publishes of one setup.
- * Status is deliberately NOT part of this: the feed only merges exact clones
- * (same status), while the publish guard treats an identical setup as already
- * live even after the monitor moved it a step along its lifecycle.
+ * Same pair, side, grade and levels — two publishes of one setup. Status is
+ * deliberately NOT part of this: the feed only merges exact clones (same
+ * status), while the publish guard treats an identical setup as already live
+ * even after the monitor moved it a step along its lifecycle.
  */
 export function isSameSetup(a: SetupFingerprint, b: SetupFingerprint): boolean {
   return (
@@ -162,8 +167,7 @@ export function isSameSetup(a: SetupFingerprint, b: SetupFingerprint): boolean {
     (a.entryMax ?? null) === (b.entryMax ?? null) &&
     (a.sl ?? null) === (b.sl ?? null) &&
     (a.tp1 ?? null) === (b.tp1 ?? null) &&
-    (a.tp2 ?? null) === (b.tp2 ?? null) &&
-    (a.reason ?? "") === (b.reason ?? "")
+    (a.tp2 ?? null) === (b.tp2 ?? null)
   );
 }
 
@@ -187,14 +191,16 @@ export function blocksPublish(
  * Collapse exact clones to the newest of each set.
  *
  * A double publish (resubmit after an error, two browsers, a retry the desk
- * thought had failed) lands two documents with identical content, and the
- * dashboard would show the same NAS100 card twice. The feed arrives newest
- * first, so the first of each clone set wins and the input order is preserved.
+ * thought had failed — or the same setup republished with translated prose)
+ * lands two documents for one setup, and the dashboard would show the same
+ * NAS100 card twice. The feed arrives newest first, so the first of each clone
+ * set wins and the input order is preserved.
  *
  * Only unresolved signals merge: a resolved TP/SL result is the track record,
  * and two identical-looking results on different days are two trades, not a
  * clone. Clones of those are the admin's call to delete, never the feed's to
- * hide.
+ * hide. NO_TRADE twins merge to the latest stance, which is the only one the
+ * desk means — a no-trade is the current posture, not history.
  */
 export function dedupeSignals<T extends TradingSignal>(signals: T[]): T[] {
   const seen: T[] = [];
